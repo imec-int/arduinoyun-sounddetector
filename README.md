@@ -1,9 +1,6 @@
-arduinoyun-sounddetector
-========================
+# Arduino Yun - Sound Detector
 
-Building a internet connected Sound Detector on an Arduino Yun using Node.js
-
-
+Building an internet connected Sound Detector on an Arduino Yun using Node.js
 
 
 ## Notes
