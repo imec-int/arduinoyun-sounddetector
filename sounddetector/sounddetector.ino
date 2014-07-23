@@ -9,11 +9,19 @@ void sendSoundLevels();
 
 int incomingByte = 0;
 
+const int sampleWindow = 50; // Sample window width in mS (50 mS = 20Hz)
+unsigned int sample;
+
 const int ledPin = 13;
 const int soundPins[] = {A0, A1, A2, A3, A4, A5};
 
 const int pinCount = 6;
 int soundValues[pinCount] = {0};
+
+unsigned int signalMax[pinCount] = {0};
+unsigned int signalMin[pinCount] = {1024};
+unsigned long startMillis = millis();
+
 
 int threshold = 700; //in mV
 int capacity[pinCount] = {0};
@@ -41,8 +49,66 @@ void setup()
 }
 
 /* This function loops forever (every 5ms) ------------------------------------*/
-void loop()
-{
+void loop() {
+  
+  if(millis() - startMillis < sampleWindow) {
+    // collecting data:
+    
+    for (int pin = 0; pin < pinCount; ++pin) {
+      sample = analogRead(pin);
+      if (sample < 1024) { // toss out spurious readings
+         if (sample > signalMax[pin]) {
+            signalMax[pin] = sample;  // save just the max levels
+         }else if (sample < signalMin[pin]) {
+            signalMin[pin] = sample;  // save just the min levels
+         }
+      }
+    }
+  }else{
+    // we've collected enough data, lets use it
+   
+    for (int pin = 0; pin < pinCount; ++pin) {
+
+      // store soundValue:      
+      soundValues[pin] = signalMax[pin] - signalMin[pin];  // max - min = peak-peak amplitude
+
+      //reset:
+      signalMax[pin] = 0;
+      signalMin[pin] = 1024;
+      
+      startMillis = millis();
+    }
+   
+      
+    for (int pin = 0; pin < pinCount; ++pin) {
+      
+      // Send channel 0 as test:
+      if(pin == 0){
+        uint16_t number = averageSoundValues[pin];
+        uint16_t mask   = B11111111;
+        uint8_t first_half   = number >> 8;
+        uint8_t sencond_half = number & mask;
+        
+        // always start with 3 bytes of 255 so that Node.js knows were this 'packet' starts:
+        NodeSerial.write(255);
+        NodeSerial.write(255);
+        NodeSerial.write(255);
+        NodeSerial.write(03); // 03 = soundlevel
+        NodeSerial.write(pin);  // channel
+        NodeSerial.write(first_half);   // value, first byte (Big Endian)
+        NodeSerial.write(sencond_half); // value, last byte  (Big Endian) 
+      }
+    }
+ }
+    
+  
+  
+  
+  
+  
+  
+  
+  /*
   for (int pin = 0; pin < pinCount; ++pin)
   {
     soundValues[pin] = analogRead(soundPins[pin]);
@@ -83,6 +149,8 @@ void loop()
   sendSoundLevels();
 
   delay(5); // wait an extra 5ms, that's 10ms between loops
+  
+  */
 }
 
 void updateState(int pin, int state)

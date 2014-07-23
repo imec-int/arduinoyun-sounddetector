@@ -48,13 +48,23 @@ var App = function (options){
 	var onSoundlevelChanged = function (soundlevel) {
 		// console.log(soundlevel);
 
-		var percentage = soundlevel.value/1000;
+		if(soundlevel.channel != 0) return; //debug
+
+		var percentage = soundlevel.value/1024;
+
+		soundlevel.db = 20.0 * log10(soundlevel.value+1);
+
+		// console.log(soundlevel.db);
 
 		$('.soundbar .fill').css('height', (percentage*100)+'%')
 	};
 
 	var onSoundstateChanged = function (soundstate) {
 		console.log(soundstate);
+	};
+
+	var log10 = function (x) {
+		return Math.log(x) / Math.LN10;
 	};
 
 	return {
