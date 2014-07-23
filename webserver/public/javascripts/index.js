@@ -27,7 +27,8 @@ var App = function (options){
 			console.log('connected');
 		});
 
-		// socket.on('action', onAction);
+		socket.on('soundlevelChanged', onSoundlevelChanged);
+		socket.on('soundstateChanged', onSoundstateChanged);
 	};
 
 	var addUIHandlers = function () {
@@ -41,6 +42,19 @@ var App = function (options){
 
 	var onDisableLed = function (event) {
 		$.post('/rest/led', {state: 'off'});
+	};
+
+
+	var onSoundlevelChanged = function (soundlevel) {
+		// console.log(soundlevel);
+
+		var percentage = soundlevel.value/1000;
+
+		$('.soundbar .fill').css('height', (percentage*100)+'%')
+	};
+
+	var onSoundstateChanged = function (soundstate) {
+		console.log(soundstate);
 	};
 
 	return {

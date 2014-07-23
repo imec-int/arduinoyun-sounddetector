@@ -100,7 +100,6 @@ void updateState(int pin, int state)
 
 
 void sendSoundState(int pin, int state) {
-  if(debug) Serial.println("> Sending state to Node.js over /dev/ttyATH0");
   if(debug) Serial.print("> pin: ");
   if(debug) Serial.print(pin);
   if(debug) Serial.print(" | state: ");
@@ -147,7 +146,7 @@ void readIncommingNodeData() {
 
 
 void sendSoundLevels(){
-  return;
+//  return;
   
   uint16_t number = soundValues[0];
   uint16_t mask   = B11111111;

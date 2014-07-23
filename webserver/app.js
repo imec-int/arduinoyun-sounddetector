@@ -16,8 +16,8 @@ var app = express();
 
 app.configure(function(){
 	app.set('port', process.env.PORT || 3000);
-	app.set('views', __dirname + '/views');
-	app.set('view engine', 'jade');
+	// app.set('views', __dirname + '/views');
+	// app.set('view engine', 'jade');
 	app.use(express.favicon());
 	// app.use(express.logger('dev'));
 	app.use(express.bodyParser());
@@ -90,10 +90,14 @@ var sp = new SerialPort("/dev/ttyATH0", {
 	baudrate: 9600
 });
 
+serialport.on("error", function (err) {
+	console.log(err);
+});
 
 
-app.get('/', function (req, res){
-	res.render('index', { title: 'Hello World' });
+
+app.get('/', function (req, res) {
+	res.sendfile(__dirname + '/public/index.html');
 });
 
 app.post('/rest/led', function (req, res){
@@ -133,6 +137,9 @@ function parseSoundLevel (data) {
 		value: data.readUInt16BE(5) // last two bytes are a 16bit integer encoded big endian
 	};
 	console.log('sound level changed', soundlevel);
+
+
+	io.sockets.emit('soundlevelChanged', soundlevel);
 }
 
 function parseSoundState (data) {
@@ -141,6 +148,8 @@ function parseSoundState (data) {
 		soundon: (data[5] == 1) // boolean, true or false
 	};
 	console.log('sound state changed', state);
+
+	io.sockets.emit('soundstateChanged', state);
 
 	//data[3] should be emtpy
 }
