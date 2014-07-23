@@ -1,6 +1,6 @@
 /* Function prototypes -------------------------------------------------------*/
 void updateState(int pin, int state);
-void postState(int pin, int state);
+void sendSoundState(int pin, int state);
 void readIncommingNodeData();
 void sendSoundLevels();
 
@@ -12,7 +12,7 @@ int incomingByte = 0;
 const int ledPin = 13;
 const int soundPins[] = {A0, A1, A2, A3, A4, A5};
 
-const int pinCount = 8;
+const int pinCount = 6;
 int soundValues[pinCount] = {0};
 
 int threshold = 700; //in mV
@@ -94,21 +94,26 @@ void updateState(int pin, int state)
 
     digitalWrite(ledPin, state); // turn LED on/off
 
-    postState(pin, state);
+    sendSoundState(pin, state);
   }
 }
 
 
-void postState(int pin, int state) {
-  if(debug) Serial.println("> Sending state over HTTP POST");
+void sendSoundState(int pin, int state) {
+  if(debug) Serial.println("> Sending state to Node.js over /dev/ttyATH0");
   if(debug) Serial.print("> pin: ");
   if(debug) Serial.print(pin);
   if(debug) Serial.print(" | state: ");
   if(debug) Serial.println(state);
-    
+  
+  // always start with 3 bytes of 255 so that Node.js knows were this 'packet' starts:
+  NodeSerial.write(255);
+  NodeSerial.write(255);
+  NodeSerial.write(255);
   NodeSerial.write(02); // 02 = soundstate
   NodeSerial.write(pin); // channel
   NodeSerial.write(state); // volumeon
+  NodeSerial.write(0); // empty byte, because we always expect 4 bytes ;-)
 }
 
 void readIncommingNodeData() {
@@ -142,16 +147,23 @@ void readIncommingNodeData() {
 
 
 void sendSoundLevels(){
-  return void;
+  return;
   
   uint16_t number = soundValues[0];
   uint16_t mask   = B11111111;
   uint8_t first_half   = number >> 8;
   uint8_t sencond_half = number & mask;
   
+  // always start with 3 bytes of 255 so that Node.js knows were this 'packet' starts:
+  NodeSerial.write(255);
+  NodeSerial.write(255);
+  NodeSerial.write(255);
   NodeSerial.write(03); // 03 = soundlevel
   NodeSerial.write(0);  // channel
   NodeSerial.write(first_half);   // value, first byte (Big Endian)
   NodeSerial.write(sencond_half); // value, last byte  (Big Endian)
 }
+
+
+
 

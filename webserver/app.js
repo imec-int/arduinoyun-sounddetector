@@ -32,7 +32,7 @@ app.configure('development', function(){
 });
 
 var webserver = http.createServer(app).listen(app.get('port'), function(){
-	console.log("Express server listening on port " + app.get('port') + " - v 0.0.8");
+	console.log("Express server listening on port " + app.get('port') + " - v 0.1.0");
 });
 var io = socketio.listen(webserver);
 io.set('log level', 0);
@@ -40,22 +40,53 @@ io.set('log level', 0);
 
 // Serial:
 
-// byteLength parser (waits for x bytes and then emits them as data)
-function byteLength (length) {
+// my own parser (waits for 3 times 255 and then read the next 4 bytes):
+function ownparser () {
 	var data = new Buffer(0);
 
 	return function (emitter, buffer){
+		// console.log('rawbuffer', buffer);
+
 		data = Buffer.concat([data, buffer]);
-		while (data.length >= length) {
-			var out = data.slice(0,length);
-			data = data.slice(length);
+
+		while(data.length >= 7){
+
+			var times255 = 0;
+			var startindex;
+
+			for (var i = 0; i < data.length; i++) {
+				if(data[i] == 255){
+					times255++;
+				}else{
+					if(times255 >= 3){
+						// we have a starting point:
+						startindex = i-3;
+						break;
+					}else{
+						times255 = 0;
+						startindex = null;
+					}
+				}
+			};
+
+			if(startindex !== null){
+				data = data.slice(startindex);
+			}
+
+			// get first 7 bytes:
+			var out = data.slice(0,7);
+
+			// leave the rest for the next time/whileloop
+			data = data.slice(7);
+
+			// emit those 7 bytes:
 			emitter.emit('data', out);
 		}
 	};
 }
 
 var sp = new SerialPort("/dev/ttyATH0", {
-	parser: byteLength(4),
+	parser: ownparser(),
 	baudrate: 9600
 });
 
@@ -85,27 +116,29 @@ sp.on("open", function () {
 
 
 sp.on('data', function (data) {
-	if(data[0] == 03){
-		return parseSoundLevel(data);
+	// console.log(data);
+
+	if(data[3] == 02){
+		return parseSoundState(data);
 	}
 
-	if(data[0] == 02){
-		return parseSoundState(data);
+	if(data[3] == 03){
+		return parseSoundLevel(data);
 	}
 });
 
 function parseSoundLevel (data) {
 	var soundlevel = {
-		channel: data[1],
-		value: data.readUInt16BE(2) // last two bytes are a 16bit integer encoded big endian
+		channel: data[4],
+		value: data.readUInt16BE(5) // last two bytes are a 16bit integer encoded big endian
 	};
 	console.log('sound level changed', soundlevel);
 }
 
 function parseSoundState (data) {
 	var state = {
-		channel: data[1],
-		soundon: (data[2] == 1) // boolean, true or false
+		channel: data[4],
+		soundon: (data[5] == 1) // boolean, true or false
 	};
 	console.log('sound state changed', state);
 
