@@ -24,16 +24,21 @@ Building an internet connected Sound Detector on an Arduino Yun using Node.js
 
 ### Install node-serialport
 
-Ipv via ```npm install``` node-serialport te installeren, is er een gecompileerde openWRT package beschikbaar.
-
-node-serialport kan dus geïnstalleerd worden met:
+Don't install serialport using [npm](https://www.npmjs.org/package/serialport) but use the precompiled version for the Yun:
 
     opkg update
     opkg install node-serialport
 
-### npm install
+### Install node-socket.io
 
-Kan redelijk wat tijd in beslag nemen. Best zoveel mogelijk op pc 'compilen'/installeren en dan overkopiëren naar de Yun.
+Don't install socket.io using [npm](https://www.npmjs.org/package/socket.io) but use the precompiled version for the Yun:
+
+    opkg update
+    opkg install node-socket.io
+
+### other modules
+
+Try to install other modules on your computer and then copy them to the Yun. Installing modules on can take up some time.
 
 ## Error fixes
 
