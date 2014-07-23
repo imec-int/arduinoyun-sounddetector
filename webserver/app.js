@@ -37,8 +37,22 @@ var webserver = http.createServer(app).listen(app.get('port'), function(){
 
 // Serial:
 
+// byteLength parser (waits for x bytes and then emits them as data)
+function byteLength (length) {
+	var data = new Buffer(0);
+
+	return function (emitter, buffer){
+		data = Buffer.concat([data, buffer]);
+		while (data.length >= length) {
+			var out = data.slice(0,length);
+			data = data.slice(length);
+			emitter.emit('data', out);
+		}
+	};
+}
+
 var sp = new SerialPort("/dev/ttyATH0", {
-	// parser: serialport.parsers.readline("\n"),
+	parser: byteLength(4),
 	baudrate: 9600
 });
 
@@ -66,8 +80,38 @@ sp.on("open", function () {
 	console.log('serialport is open');
 });
 
+
 sp.on('data', function (data) {
-	console.log('serial data', data);
+	if(data[0] == 03){
+		return parseSoundLevel(data);
+	}
+
+	if(data[0] == 02){
+		return parseSoundState(data);
+	}
+});
+
+function parseSoundLevel (data) {
+	var soundlevel = {
+		channel: data[1],
+		value: data.readUInt16BE(2) // last two bytes are a 16bit integer encoded big endian
+	};
+	console.log('sound level changed', soundlevel);
+}
+
+function parseSoundState (data) {
+	var state = {
+		channel: data[1],
+		soundon: (data[2] == 1) // boolean, true or false
+	};
+	console.log('sound state changed', state);
+
+	//data[3] should be emtpy
+}
+
+
+sp.on("close", function () {
+	console.log('serialport closed');
 });
 
 
