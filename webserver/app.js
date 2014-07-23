@@ -7,6 +7,7 @@ var utils = require('./utils');
 var serialport = require('serialport');
 var SerialPort = serialport.SerialPort;
 var net = require('net');
+var socketio = require('socket.io');
 
 
 // Webserver:
@@ -31,8 +32,10 @@ app.configure('development', function(){
 });
 
 var webserver = http.createServer(app).listen(app.get('port'), function(){
-	console.log("Express server listening on port " + app.get('port') + " - v 0.0.4");
+	console.log("Express server listening on port " + app.get('port') + " - v 0.0.8");
 });
+var io = socketio.listen(webserver);
+io.set('log level', 0);
 
 
 // Serial:

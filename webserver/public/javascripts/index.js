@@ -4,7 +4,7 @@ var App = function (options){
 
 	var init = function (){
 		console.log("init");
-		// initSocket();
+		initSocket();
 		addUIHandlers();
 	};
 
