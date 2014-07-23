@@ -84,7 +84,7 @@ void loop() {
       
       // Send channel 0 as test:
       if(pin == 0){
-        uint16_t number = averageSoundValues[pin];
+        uint16_t number = soundValues[pin];
         uint16_t mask   = B11111111;
         uint8_t first_half   = number >> 8;
         uint8_t sencond_half = number & mask;
