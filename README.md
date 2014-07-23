@@ -36,9 +36,22 @@ Don't install socket.io using [npm](https://www.npmjs.org/package/socket.io) but
     opkg update
     opkg install node-socket.io
 
-### other modules
+### Install other Node.js modules
 
-Try to install other modules on your computer and then copy them to the Yun. Installing modules on can take up some time.
+Try to install other Node.js modules. Install them on your computer and then copy them to the Yun. Installing modules on can take up some time.
+
+### Disable the console on /dev/ttyATH0
+
+Linux uses the ```/dev/ttyATH0``` serial port as its main console (it displays booting data when you boot the Linux CPU). You have to disable it in order to use this as a communication channel between the Arduino chip and the Linux CPU.
+
+Open ```/etc/inittab``` and comment out the following line:
+
+    ttyATH0::askfirst:/bin/ash --login
+
+Change it to:
+
+    # ttyATH0::askfirst:/bin/ash --login
+
 
 ## Error fixes
 
@@ -59,3 +72,6 @@ Change:
 To:
 
     NODE_PATH=/usr/lib/node_modules /usr/bin/nodejs $@
+
+Temporarily.
+
