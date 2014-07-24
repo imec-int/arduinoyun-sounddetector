@@ -1,11 +1,14 @@
 var App = function (options){
 
-	var socket;
+	var socket, canvas, ctx, soundbuffer;
+	var x = 0;
+	var xDistance = 2; //distance between points on the graph
 
 	var init = function (){
 		console.log("init");
 		initSocket();
 		addUIHandlers();
+		initCanvas();
 	};
 
 	var initSocket = function (){
@@ -31,6 +34,23 @@ var App = function (options){
 		socket.on('soundstateChanged', onSoundstateChanged);
 	};
 
+	var initCanvas = function () {
+		canvas = document.getElementById('soundgraph');
+		ctx = canvas.getContext('2d');
+
+		WIDTH = canvas.width;
+		HEIGHT = canvas.height;
+
+		ctx.fillStyle = 'rgb(200, 200, 200)';
+		ctx.lineWidth = 1;
+		ctx.strokeStyle = 'rgb(0, 0, 0)';
+
+		soundbufferLENGTH = Math.floor(canvas.width/xDistance);
+		soundbuffer = new Array(soundbufferLENGTH);
+
+		draw();
+	};
+
 	var addUIHandlers = function () {
 		$('.led .enable').click(onEnableLed);
 		$('.led .disable').click(onDisableLed);
@@ -52,12 +72,32 @@ var App = function (options){
 
 		var percentage = soundlevel.value/1024;
 
-		soundlevel.db = 20.0 * log10(soundlevel.value+1);
+		// soundlevel.db = 20.0 * log10(soundlevel.value+1);
 
-		// console.log(soundlevel.db);
 
-		$('.soundbar .fill').css('height', (percentage*100)+'%')
+		soundbuffer = soundbuffer.slice(-(soundbufferLENGTH-1));
+		soundbuffer.push(percentage);
 	};
+
+	var draw = function () {
+
+		ctx.fillRect(0, 0, WIDTH, HEIGHT);
+		ctx.beginPath();
+
+		for (var i = 0; i < soundbuffer.length; i++) {
+			if(i === 0) {
+				ctx.moveTo(i, HEIGHT-soundbuffer[i]*HEIGHT);
+			} else {
+				ctx.lineTo(i*xDistance, HEIGHT-soundbuffer[i]*HEIGHT);
+			}
+		};
+
+		ctx.stroke();
+
+		// $('.soundbar .fill').css('height', (soundbuffer[soundbuffer.length-1]*100)+'%');
+
+		drawVisual = requestAnimationFrame(draw);
+	}
 
 	var onSoundstateChanged = function (soundstate) {
 		console.log(soundstate);
