@@ -3,6 +3,7 @@ void updateState(int pin, int state);
 void sendSoundState(int pin, int state);
 void readIncommingNodeData();
 void sendSoundLevels();
+void checkSoundStates();
 
 /* Variables -----------------------------------------------------------------*/
 #define NodeSerial Serial1 // makes it a little easier to read the code :-) NodeSerial is the serial port that communicates with Node.js, accesible as /dev/ttyATH0 in Linux
@@ -22,13 +23,21 @@ unsigned int signalMax[pinCount] = {0};
 unsigned int signalMin[pinCount] = {1024};
 unsigned long startMillis = millis();
 
+int silenceSamples = 60;
+int soundSamples = 60;
+int silenceThreshold = 880;
+int silenceCapacitor = silenceSamples;
+int soundCapacitor = 0;
+int soundThreshold = 990;
+int currentState = 0;
+
 
 int threshold = 700; //in mV
 int capacity[pinCount] = {0};
 int thresholdCapacity[pinCount] = {0};
 int currentSoundState[pinCount] = {0};
 
-bool debug = true;
+bool debug = false;
 
 /* This function is called once at start up ----------------------------------*/
 void setup()
@@ -68,7 +77,6 @@ void loop() {
     // we've collected enough data, lets use it
    
     for (int pin = 0; pin < pinCount; ++pin) {
-
       // store soundValue:      
       soundValues[pin] = signalMax[pin] - signalMin[pin];  // max - min = peak-peak amplitude
 
@@ -77,80 +85,53 @@ void loop() {
       signalMin[pin] = 1024;
       
       startMillis = millis();
-    }
-   
       
-    for (int pin = 0; pin < pinCount; ++pin) {
-      
-      // Send channel 0 as test:
-      if(pin == 0){
-        uint16_t number = soundValues[pin];
-        uint16_t mask   = B11111111;
-        uint8_t first_half   = number >> 8;
-        uint8_t sencond_half = number & mask;
-        
-        // always start with 3 bytes of 255 so that Node.js knows were this 'packet' starts:
-        NodeSerial.write(255);
-        NodeSerial.write(255);
-        NodeSerial.write(255);
-        NodeSerial.write(03); // 03 = soundlevel
-        NodeSerial.write(pin);  // channel
-        NodeSerial.write(first_half);   // value, first byte (Big Endian)
-        NodeSerial.write(sencond_half); // value, last byte  (Big Endian) 
-      }
+      checkSoundStates();
     }
- }
     
-  
-  
-  
-  
-  
-  
-  
-  /*
-  for (int pin = 0; pin < pinCount; ++pin)
-  {
-    soundValues[pin] = analogRead(soundPins[pin]);
+    sendSoundLevels(0, soundValues[0]);
+ }
+}
 
-    if(soundValues[pin] > threshold)
-    {
-      thresholdCapacity[pin]++;
-
-      if(thresholdCapacity[pin] >= 3)
-      {
-        capacity[pin] = 200; //2 seconds
-        thresholdCapacity[pin] = 0;
-
-        updateState(pin, 1);
-      }
+void checkSoundStates(){
+  
+  if( currentState == 0 ) {
+    //no sound
+    if(soundValues[0] > silenceThreshold){ // if louder than silenceThreshold
+      silenceCapacitor--;
+    }else{
+      silenceCapacitor = silenceSamples; // reset capacitor
     }
-    else
-    {
-      capacity[pin]--;
-      if(capacity[pin] <= 0 ){
-        // happens after capacity*(delay+5 ms):
-        capacity[pin] = 0; //cap
-
-        updateState(pin, 0);
-      }
-
-      thresholdCapacity[pin]--;
-      if(thresholdCapacity[pin] <= 0)
-      {
-        thresholdCapacity[pin] = 0;
-      }
+    
+    if(silenceCapacitor <= 0){
+      silenceCapacitor = 0; //cap
+      currentState = 1; // flip to "there is sound"
+      soundCapacitor = soundSamples;
+      
+      updateState(0, 1);
     }
+    
+  }else{
+    // sound
+    
+    if(soundValues[0] < soundThreshold){ // if quieter than soundThreshold
+      soundCapacitor--;
+    }else{
+      soundCapacitor = soundSamples; // reset capacitor
+    }
+    
+    if(soundCapacitor <= 0){
+      soundCapacitor = 0; //cap
+      currentState = 0; // flip to "there is silence"
+      silenceCapacitor = silenceSamples;
+      
+      updateState(0, 0);
+    }
+    
   }
   
-//  if(debug) Serial.println( soundValues[0] );
-
-  readIncommingNodeData(); // so that the incomming data doesn't block everything
-  sendSoundLevels();
-
-  delay(5); // wait an extra 5ms, that's 10ms between loops
   
-  */
+
 }
 
 void updateState(int pin, int state)
@@ -213,10 +194,10 @@ void readIncommingNodeData() {
 }
 
 
-void sendSoundLevels(){
+void sendSoundLevels(int pin, int level){
 //  return;
   
-  uint16_t number = soundValues[0];
+  uint16_t number = level;
   uint16_t mask   = B11111111;
   uint8_t first_half   = number >> 8;
   uint8_t sencond_half = number & mask;
@@ -226,7 +207,7 @@ void sendSoundLevels(){
   NodeSerial.write(255);
   NodeSerial.write(255);
   NodeSerial.write(03); // 03 = soundlevel
-  NodeSerial.write(0);  // channel
+  NodeSerial.write(pin);  // channel
   NodeSerial.write(first_half);   // value, first byte (Big Endian)
   NodeSerial.write(sencond_half); // value, last byte  (Big Endian)
 }

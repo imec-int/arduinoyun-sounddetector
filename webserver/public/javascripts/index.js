@@ -4,6 +4,8 @@ var App = function (options){
 	var x = 0;
 	var xDistance = 2; //distance between points on the graph
 
+	var soundon = false;
+
 	var init = function (){
 		console.log("init");
 		initSocket();
@@ -76,7 +78,7 @@ var App = function (options){
 
 
 		soundbuffer = soundbuffer.slice(-(soundbufferLENGTH-1));
-		soundbuffer.push(percentage);
+		soundbuffer.push({percentage: percentage, soundon: soundon});
 	};
 
 	var draw = function () {
@@ -85,10 +87,15 @@ var App = function (options){
 		ctx.beginPath();
 
 		for (var i = 0; i < soundbuffer.length; i++) {
+
+			if(!soundbuffer[i]) continue;
+
+			var soundvalue = HEIGHT-soundbuffer[i].percentage*HEIGHT
+
 			if(i === 0) {
-				ctx.moveTo(i, HEIGHT-soundbuffer[i]*HEIGHT);
+				ctx.moveTo(i, soundvalue);
 			} else {
-				ctx.lineTo(i*xDistance, HEIGHT-soundbuffer[i]*HEIGHT);
+				ctx.lineTo(i*xDistance, soundvalue);
 			}
 		};
 
@@ -100,7 +107,9 @@ var App = function (options){
 	}
 
 	var onSoundstateChanged = function (soundstate) {
-		console.log(soundstate);
+		// console.log(soundstate);
+
+		soundon = soundstate.soundon;
 	};
 
 	var log10 = function (x) {
