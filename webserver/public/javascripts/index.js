@@ -1,16 +1,22 @@
 var App = function (options){
 
-	var socket, canvas, ctx, soundbuffer;
+	var canvas = document.getElementById('soundgraph');
+	var socket, ctx, soundbuffer;
 	var x = 0;
 	var xDistance = 2; //distance between points on the graph
 
 	var currentSoundon = false;
+	var newsoundleveldata = false;
 
 	var init = function (){
 		console.log("init");
 		initSocket();
 		addUIHandlers();
 		initCanvas();
+
+		$(window).on("load resize orientationchange", function() {
+			updateDimensions();
+		});
 	};
 
 	var initSocket = function (){
@@ -37,15 +43,17 @@ var App = function (options){
 	};
 
 	var initCanvas = function () {
-		canvas = document.getElementById('soundgraph');
+
 		ctx = canvas.getContext('2d');
+
+		canvas.width  = $('canvas').width();
+		canvas.height = $('canvas').height();
 
 		WIDTH = canvas.width;
 		HEIGHT = canvas.height;
 
 		ctx.fillStyle = 'rgb(200, 200, 200)';
 		ctx.lineWidth = 1;
-		ctx.strokeStyle = 'rgb(0, 0, 0)';
 
 		soundbufferLENGTH = Math.floor(canvas.width/xDistance);
 		soundbuffer = new Array(soundbufferLENGTH);
@@ -53,9 +61,13 @@ var App = function (options){
 		draw();
 	};
 
+	var updateDimensions = function () {
+
+	};
+
 	var addUIHandlers = function () {
-		$('.led .enable').click(onEnableLed);
-		$('.led .disable').click(onDisableLed);
+		$('#ledenable').click(onEnableLed);
+		$('#leddisable').click(onDisableLed);
 	};
 
 	var onEnableLed = function (event) {
@@ -76,36 +88,25 @@ var App = function (options){
 
 		// soundlevel.db = 20.0 * log10(soundlevel.value+1);
 
-
 		soundbuffer = soundbuffer.slice(-(soundbufferLENGTH-1));
 		soundbuffer.push({percentage: percentage, soundon: currentSoundon});
-
 	};
 
-	var c = 0;
-
 	var draw = function () {
-
-		ctx.fillRect(0, 0, WIDTH, HEIGHT);
-
 		var x_prev = 0;
 		var soundvalue_prev = 0;
 		var soundon_prev = false;
 
 
+		ctx.fillRect(0, 0, WIDTH, HEIGHT);
 		ctx.strokeStyle="black";
 
 
 		for (var i = 0; i < soundbuffer.length; i++) {
-
-
 			if(!soundbuffer[i]) continue;
-
-			// console.log(i, soundbuffer[i]);
 
 			var x = i*xDistance;
 			var soundvalue = HEIGHT-soundbuffer[i].percentage*HEIGHT;
-
 
 
 			if(soundbuffer[i].soundon != soundon_prev){
@@ -130,27 +131,11 @@ var App = function (options){
 		};
 
 
-
-
-
-		// $('.soundbar .fill').css('height', (soundbuffer[soundbuffer.length-1]*100)+'%');
-
-
-
-		// setTimeout(function () {
-		// 	c++;
-		// 	if(c < 3)
-		// 		drawVisual = requestAnimationFrame(draw);
-		// }, 1000)
-
-
-		drawVisual = requestAnimationFrame(draw);
-
-	}
+		// redraw:
+		requestAnimationFrame(draw);
+	};
 
 	var onSoundstateChanged = function (soundstate) {
-		// console.log(soundstate);
-
 		currentSoundon = soundstate.soundon;
 	};
 

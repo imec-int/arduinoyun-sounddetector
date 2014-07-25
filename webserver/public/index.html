@@ -5,28 +5,52 @@
 
 	<title>Q-Music Sound Detector</title>
 	<link href="http://fonts.googleapis.com/css?family=Roboto:400,700,400italic,100" rel="stylesheet" type="text/css">
-	<link rel="stylesheet" href="/stylesheets/style.css" type="text/css">
 
 	<script type="text/javascript" src="//code.jquery.com/jquery.min.js"></script>
 	<script type="text/javascript" src="/vendor/jquery.tmpl.min.js"></script>
+
+	<!-- Latest compiled and minified CSS -->
+	<link rel="stylesheet" href="//maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap.min.css">
+	<!-- Optional theme -->
+	<link rel="stylesheet" href="//maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap-theme.min.css">
+	<!-- Latest compiled and minified JavaScript -->
+	<script src="//maxcdn.bootstrapcdn.com/bootstrap/3.2.0/js/bootstrap.min.js"></script>
+
+
+	<link rel="stylesheet" href="/stylesheets/style.css" type="text/css">
+
+
 
 
 	<script type="text/javascript" src="/socket.io/socket.io.js"></script>
 	<script type="text/javascript" src="/javascripts/index.js"></script>
 </head>
 <body>
-	<div class="led">
-		<button class="enable">Led ON</button><button class="disable">Led OFF</button>
-	</div>
+	<div class="container">
+		<button id="ledenable" class="btn btn-primary">Led ON</button>
+		<button id="leddisable" class="btn btn-primary">Led OFF</button>
+		<br />
+		<br />
+		<form class="form-horizontal" role="form">
+			<div class="form-group">
+				<label class="col-sm-2 control-label">Choose channel</label>
+				<div class="col-sm-10">
+					<select class="form-control" name="channel">
+						<option value="0">channel 0</option>
+						<option value="1">channel 1</option>
+						<option value="2">channel 2</option>
+						<option value="3">channel 3</option>
+						<option value="4">channel 4</option>
+						<option value="5">channel 5</option>
+					</select>
+				</div>
+			</div>
+		</form>
+		<br />
+		<br />
 
-	<div class="content">
-		<canvas id="soundgraph" width="1000" height="400"></canvas>
-		<br />
-		<br />
-		<div class="soundbar"><div class="fill"></div></div>
-		<br />
-		<br />
-
+		<label>Channel 0:</label>
+		<canvas id="soundgraph"></canvas>
 		<br />
 	</div>
 </body>

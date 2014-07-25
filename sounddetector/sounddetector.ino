@@ -22,10 +22,10 @@ unsigned int signalMax[pinCount] = {0};
 unsigned int signalMin[pinCount] = {1024};
 unsigned long startMillis = millis();
 
-int silenceThreshold = 800;
-int soundThreshold = 930;
-int nrOfConsecutiveSilenceSamplesBeforeFlippingToSound = 30;
-int nrOfConsecutiveSoundSamplesBeforeFlippingToSilence = 60;
+int silenceThreshold = 900;
+int soundThreshold = 990;
+int nrOfConsecutiveSilenceSamplesBeforeFlippingToSilence = 12;
+int nrOfConsecutiveSoundSamplesBeforeFlippingToSound = 5;
 int silenceSampleCounter = 0;
 int soundSampleCounter = 0;
 
@@ -104,7 +104,7 @@ void checkSoundState(int pin, int level){
       soundSampleCounter = 0; // reset
     }
     
-    if(soundSampleCounter >= nrOfConsecutiveSoundSamplesBeforeFlippingToSilence){
+    if(soundSampleCounter >= nrOfConsecutiveSoundSamplesBeforeFlippingToSound){
       currentState = 1; // flip to "SOUND"
       soundSampleCounter = 0; // reset soundSampleCounter for the next time there is SILENCE
       
@@ -120,7 +120,7 @@ void checkSoundState(int pin, int level){
       silenceSampleCounter = 0; // reset
     }
     
-    if(silenceSampleCounter >= nrOfConsecutiveSilenceSamplesBeforeFlippingToSound){
+    if(silenceSampleCounter >= nrOfConsecutiveSilenceSamplesBeforeFlippingToSilence){
       currentState = 0; // flip to "SILENCE"
       silenceSampleCounter = 0; // reset silenceSampleCounter for the next time there is SOUND
 
