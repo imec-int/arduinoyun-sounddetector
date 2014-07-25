@@ -1,9 +1,8 @@
 /* Function prototypes -------------------------------------------------------*/
-void updateState(int pin, int state);
-void sendSoundState(int pin, int state);
 void readIncommingNodeData();
-void sendSoundLevels();
-void checkSoundStates();
+void checkSoundState(int pin, int level);
+void sendSoundState(int pin, int state);
+void sendSoundLevel(int pin, int level);
 
 /* Variables -----------------------------------------------------------------*/
 #define NodeSerial Serial1 // makes it a little easier to read the code :-) NodeSerial is the serial port that communicates with Node.js, accesible as /dev/ttyATH0 in Linux
@@ -23,18 +22,15 @@ unsigned int signalMax[pinCount] = {0};
 unsigned int signalMin[pinCount] = {1024};
 unsigned long startMillis = millis();
 
-int silenceSamples = 60;
-int soundSamples = 60;
-int silenceThreshold = 880;
-int silenceCapacitor = silenceSamples;
-int soundCapacitor = 0;
-int soundThreshold = 990;
+int silenceThreshold = 800;
+int soundThreshold = 930;
+int nrOfConsecutiveSilenceSamplesBeforeFlippingToSound = 30;
+int nrOfConsecutiveSoundSamplesBeforeFlippingToSilence = 60;
+int silenceSampleCounter = 0;
+int soundSampleCounter = 0;
+
 int currentState = 0;
 
-
-int threshold = 700; //in mV
-int capacity[pinCount] = {0};
-int thresholdCapacity[pinCount] = {0};
 int currentSoundState[pinCount] = {0};
 
 bool debug = false;
@@ -83,72 +79,60 @@ void loop() {
       //reset:
       signalMax[pin] = 0;
       signalMin[pin] = 1024;
-      
       startMillis = millis();
       
-      checkSoundStates();
+      // check sound state (SOUND or SILCENCE):
+      checkSoundState(pin, soundValues[pin]);
+      
+      // send sound level (if required):
+      sendSoundLevel(pin, soundValues[pin]);
     }
-    
-    sendSoundLevels(0, soundValues[0]);
- }
+  }
+  
+  readIncommingNodeData();
 }
 
-void checkSoundStates(){
-  
+void checkSoundState(int pin, int level){
+  if(pin != 0) return; //only check pin 0 for now
+    
   if( currentState == 0 ) {
-    //no sound
-    if(soundValues[0] > silenceThreshold){ // if louder than silenceThreshold
-      silenceCapacitor--;
+    // IF SILENCE
+    
+    if(level > soundThreshold){ // if louder than soundThreshold
+      soundSampleCounter++;
     }else{
-      silenceCapacitor = silenceSamples; // reset capacitor
+      soundSampleCounter = 0; // reset
     }
     
-    if(silenceCapacitor <= 0){
-      silenceCapacitor = 0; //cap
-      currentState = 1; // flip to "there is sound"
-      soundCapacitor = soundSamples;
+    if(soundSampleCounter >= nrOfConsecutiveSoundSamplesBeforeFlippingToSilence){
+      currentState = 1; // flip to "SOUND"
+      soundSampleCounter = 0; // reset soundSampleCounter for the next time there is SILENCE
       
-      updateState(0, 1);
+      sendSoundState(pin, currentState); // send sound state to Node.js
     }
     
   }else{
-    // sound
+    // IF SOUND
     
-    if(soundValues[0] < soundThreshold){ // if quieter than soundThreshold
-      soundCapacitor--;
+    if(level < silenceThreshold){ // if quieter than silenceThreshold
+      silenceSampleCounter++;
     }else{
-      soundCapacitor = soundSamples; // reset capacitor
+      silenceSampleCounter = 0; // reset
     }
     
-    if(soundCapacitor <= 0){
-      soundCapacitor = 0; //cap
-      currentState = 0; // flip to "there is silence"
-      silenceCapacitor = silenceSamples;
-      
-      updateState(0, 0);
+    if(silenceSampleCounter >= nrOfConsecutiveSilenceSamplesBeforeFlippingToSound){
+      currentState = 0; // flip to "SILENCE"
+      silenceSampleCounter = 0; // reset silenceSampleCounter for the next time there is SOUND
+
+      sendSoundState(pin, currentState);
     }
-    
-  }
   
-  
-
-}
-
-void updateState(int pin, int state)
-{
-  // only send state if different from previous:
-  if(currentSoundState[pin] != state)
-  {
-    currentSoundState[pin] = state;
-
-    digitalWrite(ledPin, state); // turn LED on/off
-
-    sendSoundState(pin, state);
   }
 }
-
 
 void sendSoundState(int pin, int state) {
+  digitalWrite(ledPin, state); // debug to LED
+  
   if(debug) Serial.print("> pin: ");
   if(debug) Serial.print(pin);
   if(debug) Serial.print(" | state: ");
@@ -163,6 +147,33 @@ void sendSoundState(int pin, int state) {
   NodeSerial.write(state); // volumeon
   NodeSerial.write(0); // empty byte, because we always expect 4 bytes ;-)
 }
+
+
+
+void sendSoundLevel(int pin, int level){
+  if(pin != 0) return; //debug
+  
+  
+  
+  uint16_t number = level;
+  uint16_t mask   = B11111111;
+  uint8_t first_half   = number >> 8;
+  uint8_t sencond_half = number & mask;
+  
+  // always start with 3 bytes of 255 so that Node.js knows were this 'packet' starts:
+  NodeSerial.write(255);
+  NodeSerial.write(255);
+  NodeSerial.write(255);
+  NodeSerial.write(03); // 03 = soundlevel
+  NodeSerial.write(pin);  // channel
+  NodeSerial.write(first_half);   // value, first byte (Big Endian)
+  NodeSerial.write(sencond_half); // value, last byte  (Big Endian)
+}
+
+
+
+
+
 
 void readIncommingNodeData() {
   // READ RESPONSE
@@ -191,25 +202,6 @@ void readIncommingNodeData() {
       }
     }
   }
-}
-
-
-void sendSoundLevels(int pin, int level){
-//  return;
-  
-  uint16_t number = level;
-  uint16_t mask   = B11111111;
-  uint8_t first_half   = number >> 8;
-  uint8_t sencond_half = number & mask;
-  
-  // always start with 3 bytes of 255 so that Node.js knows were this 'packet' starts:
-  NodeSerial.write(255);
-  NodeSerial.write(255);
-  NodeSerial.write(255);
-  NodeSerial.write(03); // 03 = soundlevel
-  NodeSerial.write(pin);  // channel
-  NodeSerial.write(first_half);   // value, first byte (Big Endian)
-  NodeSerial.write(sencond_half); // value, last byte  (Big Endian)
 }
 
 
