@@ -4,7 +4,7 @@ var App = function (options){
 	var x = 0;
 	var xDistance = 2; //distance between points on the graph
 
-	var soundon = false;
+	var currentSoundon = false;
 
 	var init = function (){
 		console.log("init");
@@ -78,38 +78,80 @@ var App = function (options){
 
 
 		soundbuffer = soundbuffer.slice(-(soundbufferLENGTH-1));
-		soundbuffer.push({percentage: percentage, soundon: soundon});
+		soundbuffer.push({percentage: percentage, soundon: currentSoundon});
+
 	};
+
+	var c = 0;
 
 	var draw = function () {
 
 		ctx.fillRect(0, 0, WIDTH, HEIGHT);
-		ctx.beginPath();
+
+		var x_prev = 0;
+		var soundvalue_prev = 0;
+		var soundon_prev = false;
+
+
+		ctx.strokeStyle="black";
+
 
 		for (var i = 0; i < soundbuffer.length; i++) {
 
+
 			if(!soundbuffer[i]) continue;
 
-			var soundvalue = HEIGHT-soundbuffer[i].percentage*HEIGHT
+			// console.log(i, soundbuffer[i]);
 
-			if(i === 0) {
-				ctx.moveTo(i, soundvalue);
-			} else {
-				ctx.lineTo(i*xDistance, soundvalue);
+			var x = i*xDistance;
+			var soundvalue = HEIGHT-soundbuffer[i].percentage*HEIGHT;
+
+
+
+			if(soundbuffer[i].soundon != soundon_prev){
+				if(soundbuffer[i].soundon)
+					ctx.strokeStyle="red";
+				else
+					ctx.strokeStyle="black";
 			}
+
+			ctx.beginPath();
+			ctx.moveTo(x_prev, soundvalue_prev);
+			if(x_prev != 0)
+				ctx.lineTo(x, soundvalue);
+			ctx.stroke(); // draw it
+
+
+
+
+			x_prev = x;
+			soundvalue_prev = soundvalue;
+			soundon_prev = soundbuffer[i].soundon;
 		};
 
-		ctx.stroke();
+
+
+
 
 		// $('.soundbar .fill').css('height', (soundbuffer[soundbuffer.length-1]*100)+'%');
 
+
+
+		// setTimeout(function () {
+		// 	c++;
+		// 	if(c < 3)
+		// 		drawVisual = requestAnimationFrame(draw);
+		// }, 1000)
+
+
 		drawVisual = requestAnimationFrame(draw);
+
 	}
 
 	var onSoundstateChanged = function (soundstate) {
 		// console.log(soundstate);
 
-		soundon = soundstate.soundon;
+		currentSoundon = soundstate.soundon;
 	};
 
 	var log10 = function (x) {
