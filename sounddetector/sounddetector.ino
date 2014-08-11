@@ -12,7 +12,7 @@ int incomingByte = 0;
 const int sampleWindow = 50; // Sample window width in mS (50 mS = 20Hz)
 unsigned int sample;
 
-const int ledPin = 13;
+const int ledPins[] = {2, 3, 4, 5, 6, 7};
 const int soundPins[] = {A0, A1, A2, A3, A4, A5};
 
 const int pinCount = 6;
@@ -22,15 +22,15 @@ unsigned int signalMax[pinCount] = {0};
 unsigned int signalMin[pinCount] = {1024};
 unsigned long startMillis = millis();
 
-int silenceThreshold = 900;
-int soundThreshold = 990;
-int nrOfConsecutiveSilenceSamplesBeforeFlippingToSilence = 12;
-int nrOfConsecutiveSoundSamplesBeforeFlippingToSound = 5;
-int silenceSampleCounter = 0;
-int soundSampleCounter = 0;
+int silenceThreshold[pinCount] = {200};
+int soundThreshold[pinCount] = {300};
+int nrOfConsecutiveSilenceSamplesBeforeFlippingToSilence[pinCount] = {12};
+int nrOfConsecutiveSoundSamplesBeforeFlippingToSound[pinCount] = {5};
 
-int currentState = 0;
+int silenceSampleCounter[pinCount] = {0};
+int soundSampleCounter[pinCount] = {0};
 
+int currentState[pinCount] = {0};
 int currentSoundState[pinCount] = {0};
 
 bool debug = false;
@@ -38,12 +38,16 @@ bool debug = false;
 /* This function is called once at start up ----------------------------------*/
 void setup()
 {
-  pinMode(ledPin, OUTPUT);
-
   for (int pin = 0; pin < pinCount; ++pin)
   {
     // register every pin as input:
     pinMode(soundPins[pin], INPUT);
+    
+    // register every led pin as output:
+    pinMode(ledPins[pin], OUTPUT);
+    
+    while (!Serial);
+    Serial.println(nrOfConsecutiveSilenceSamplesBeforeFlippingToSilence[pin]);
   }
   
   while (!NodeSerial); //hang till NodeSerial is up
@@ -93,45 +97,46 @@ void loop() {
 }
 
 void checkSoundState(int pin, int level){
-  if(pin != 0) return; //only check pin 0 for now
+  if(pin != 0 && pin != 5) return; //only check pin 0 for now
     
-  if( currentState == 0 ) {
+  if( currentState[pin] == 0 ) {
     // IF SILENCE
     
-    if(level > soundThreshold){ // if louder than soundThreshold
-      soundSampleCounter++;
+    if(level > soundThreshold[pin]){ // if louder than soundThreshold
+      soundSampleCounter[pin]++;
     }else{
-      soundSampleCounter = 0; // reset
+      soundSampleCounter[pin] = 0; // reset
     }
     
-    if(soundSampleCounter >= nrOfConsecutiveSoundSamplesBeforeFlippingToSound){
-      currentState = 1; // flip to "SOUND"
-      soundSampleCounter = 0; // reset soundSampleCounter for the next time there is SILENCE
+    if(soundSampleCounter[pin] >= nrOfConsecutiveSoundSamplesBeforeFlippingToSound[pin]){
+      currentState[pin] = 1; // flip to "SOUND"
+      soundSampleCounter[pin] = 0; // reset soundSampleCounter for the next time there is SILENCE
       
-      sendSoundState(pin, currentState); // send sound state to Node.js
+      sendSoundState(pin); // send sound state to Node.js
     }
     
   }else{
     // IF SOUND
     
-    if(level < silenceThreshold){ // if quieter than silenceThreshold
-      silenceSampleCounter++;
+    if(level < silenceThreshold[pin]){ // if quieter than silenceThreshold
+      silenceSampleCounter[pin]++;
     }else{
-      silenceSampleCounter = 0; // reset
+      silenceSampleCounter[pin] = 0; // reset
     }
     
-    if(silenceSampleCounter >= nrOfConsecutiveSilenceSamplesBeforeFlippingToSilence){
-      currentState = 0; // flip to "SILENCE"
-      silenceSampleCounter = 0; // reset silenceSampleCounter for the next time there is SOUND
+    if(silenceSampleCounter[pin] >= nrOfConsecutiveSilenceSamplesBeforeFlippingToSilence[pin]){
+      currentState[pin] = 0; // flip to "SILENCE"
+      silenceSampleCounter[pin] = 0; // reset silenceSampleCounter for the next time there is SOUND
 
-      sendSoundState(pin, currentState);
+      sendSoundState(pin);
     }
   
   }
 }
 
-void sendSoundState(int pin, int state) {
-  digitalWrite(ledPin, state); // debug to LED
+void sendSoundState(int pin) {
+  int state = currentState[pin];
+  digitalWrite(ledPins[pin], state); // debug to LED
   
   if(debug) Serial.print("> pin: ");
   if(debug) Serial.print(pin);
@@ -151,6 +156,9 @@ void sendSoundState(int pin, int state) {
 
 
 void sendSoundLevel(int pin, int level){
+  return;
+  
+  
   if(pin != 0) return; //debug
   
   
@@ -196,9 +204,9 @@ void readIncommingNodeData() {
       if(debug) Serial.println(incomingByte);
       
       if (incomingByte == 97){ //97='a' in ASCII
-        digitalWrite(ledPin, HIGH);
+        digitalWrite(ledPins[0], HIGH);
       }else{
-        digitalWrite(ledPin, LOW);
+        digitalWrite(ledPins[0], LOW);
       }
     }
   }

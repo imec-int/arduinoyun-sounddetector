@@ -3,7 +3,10 @@
 Building an internet connected Sound Detector on an Arduino Yun using Node.js
 
 
-## Notes
+## Hardware installation
+Connect your sound system to an analogue pin. If you're using the Arduino microphone connect the VCC-pin to the 3.3V pin (not the 5V, that one's comming from the USB power).
+
+## Software Installation
 
 ### Install SFTP server on Arduino Yun
 
