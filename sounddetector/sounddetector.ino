@@ -3,9 +3,11 @@ void readIncommingNodeData();
 void checkSoundState(int pin, int level);
 void sendSoundState(int pin, int state);
 void sendSoundLevel(int pin, int level);
+void turnOffMonitoring();
 
 /* Variables -----------------------------------------------------------------*/
-#define NodeSerial Serial1 // makes it a little easier to read the code :-) NodeSerial is the serial port that communicates with Node.js, accesible as /dev/ttyATH0 in Linux
+// #define NodeSerial Serial1 // makes it a little easier to read the code :-) NodeSerial is the serial port that communicates with Node.js, accesible as /dev/ttyATH0 in Linux
+#define NodeSerial Serial // connect directly with laptop (for debugging purposes)
 
 int incomingByte = 0;
 
@@ -16,22 +18,26 @@ const int ledPins[] = {2, 3, 4, 5, 6, 7};
 const int soundPins[] = {A0, A1, A2, A3, A4, A5};
 
 const int pinCount = 6;
-int soundValues[pinCount] = {0};
+int soundValues[] = {0, 0, 0, 0, 0, 0};
 
-unsigned int signalMax[pinCount] = {0};
-unsigned int signalMin[pinCount] = {1024};
+unsigned int signalMax[] = {0, 0, 0, 0, 0, 0};
+unsigned int signalMin[] = {1024, 1024, 1024, 1024, 1024, 1024};
 unsigned long startMillis = millis();
 
-int silenceThreshold[pinCount] = {200};
-int soundThreshold[pinCount] = {300};
-int nrOfConsecutiveSilenceSamplesBeforeFlippingToSilence[pinCount] = {12};
-int nrOfConsecutiveSoundSamplesBeforeFlippingToSound[pinCount] = {5};
 
-int silenceSampleCounter[pinCount] = {0};
-int soundSampleCounter[pinCount] = {0};
+int silenceSampleCounter[] = {0, 0, 0, 0, 0, 0};
+int soundSampleCounter[] = {0, 0, 0, 0, 0, 0};
 
-int currentState[pinCount] = {0};
-int currentSoundState[pinCount] = {0};
+int currentState[] = {0, 0, 0, 0, 0, 0};
+int currentSoundState[] = {0, 0, 0, 0, 0, 0};
+
+// settings:
+int silenceThreshold[] = {200, 200, 200, 200, 200, 200};
+int soundThreshold[] = {300, 300, 300, 300, 300, 300};
+int nrOfConsecutiveSilenceSamplesBeforeFlippingToSilence[] = {12, 12, 12, 12, 12, 12};
+int nrOfConsecutiveSoundSamplesBeforeFlippingToSound[] = {5, 5, 5, 5, 5, 5};
+
+
 
 bool debug = false;
 
@@ -45,9 +51,6 @@ void setup()
     
     // register every led pin as output:
     pinMode(ledPins[pin], OUTPUT);
-    
-    while (!Serial);
-    Serial.println(nrOfConsecutiveSilenceSamplesBeforeFlippingToSilence[pin]);
   }
   
   while (!NodeSerial); //hang till NodeSerial is up
@@ -89,7 +92,8 @@ void loop() {
       checkSoundState(pin, soundValues[pin]);
       
       // send sound level (if required):
-      sendSoundLevel(pin, soundValues[pin]);
+      if(pin == 0)
+        sendSoundLevel(pin, soundValues[pin]);
     }
   }
   
@@ -97,7 +101,8 @@ void loop() {
 }
 
 void checkSoundState(int pin, int level){
-  if(pin != 0 && pin != 5) return; //only check pin 0 for now
+  // if(pin != 0) return; //only check pin 0 for now
+
     
   if( currentState[pin] == 0 ) {
     // IF SILENCE
@@ -144,38 +149,31 @@ void sendSoundState(int pin) {
   if(debug) Serial.println(state);
   
   // always start with 3 bytes of 255 so that Node.js knows were this 'packet' starts:
-  NodeSerial.write(255);
-  NodeSerial.write(255);
-  NodeSerial.write(255);
-  NodeSerial.write(02); // 02 = soundstate
-  NodeSerial.write(pin); // channel
-  NodeSerial.write(state); // volumeon
-  NodeSerial.write(0); // empty byte, because we always expect 4 bytes ;-)
+  NodeSerial.write((byte)255);
+  NodeSerial.write((byte)255);
+  NodeSerial.write((byte)255);
+  NodeSerial.write((byte)02); // 02 = soundstate
+  NodeSerial.write((byte)pin); // channel
+  NodeSerial.write((byte)state); // volumeon
+  NodeSerial.write((byte)0); // empty byte, because we always expect 4 bytes ;-)
 }
 
 
 
-void sendSoundLevel(int pin, int level){
-  return;
-  
-  
-  if(pin != 0) return; //debug
-  
-  
-  
+void sendSoundLevel(int pin, int level){  
   uint16_t number = level;
   uint16_t mask   = B11111111;
   uint8_t first_half   = number >> 8;
   uint8_t sencond_half = number & mask;
   
   // always start with 3 bytes of 255 so that Node.js knows were this 'packet' starts:
-  NodeSerial.write(255);
-  NodeSerial.write(255);
-  NodeSerial.write(255);
-  NodeSerial.write(03); // 03 = soundlevel
-  NodeSerial.write(pin);  // channel
-  NodeSerial.write(first_half);   // value, first byte (Big Endian)
-  NodeSerial.write(sencond_half); // value, last byte  (Big Endian)
+  NodeSerial.write((byte)255);
+  NodeSerial.write((byte)255);
+  NodeSerial.write((byte)255);
+  NodeSerial.write((byte)03); // 03 = soundlevel
+  NodeSerial.write((byte)pin);  // channel
+  NodeSerial.write((byte)first_half);   // value, first byte (Big Endian)
+  NodeSerial.write((byte)sencond_half); // value, last byte  (Big Endian)
 }
 
 
@@ -186,30 +184,32 @@ void sendSoundLevel(int pin, int level){
 void readIncommingNodeData() {
   // READ RESPONSE
   if( NodeSerial.available() ) {
-    // 1. empty incomingByte:
+    // empty incomingByte:
     incomingByte = 0x00;
 
-    // 2. read first byte:
+    // read first byte:
     incomingByte = NodeSerial.read();
+    
+    if(incomingByte == 255) {
+      turnOffMonitoring();
+      if(debug) Serial.print("turn off monitoring");
+    }else{
+      // do something with the channel:
+      int channel = incomingByte;
+      if(debug) Serial.print("do something with channel ");
+      if(debug) Serial.println(channel, DEC);
+    }
 
-    // 3. read the rest of the buffer so that it's empty
+    // read the rest of the buffer so that it's empty
     while(NodeSerial.available())
     {
       NodeSerial.read();
     }
-
-    if(incomingByte != 0x00)
-    {
-      if(debug) Serial.print("> incomingByte:");
-      if(debug) Serial.println(incomingByte);
-      
-      if (incomingByte == 97){ //97='a' in ASCII
-        digitalWrite(ledPins[0], HIGH);
-      }else{
-        digitalWrite(ledPins[0], LOW);
-      }
-    }
   }
+}
+
+void turnOffMonitoring() {
+  
 }
 
 
