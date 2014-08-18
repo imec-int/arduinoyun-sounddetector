@@ -1,23 +1,19 @@
-var App = function (options){
+var App = function (options) {
 
-	var canvas = document.getElementById('soundgraph');
-	var socket, ctx, soundbuffer;
-	var x = 0;
 	var xDistance = 2; //distance between points on the graph
 
-	var currentSoundon = false;
-	var newsoundleveldata = false;
+	var socket;
 
-	var init = function (){
-		console.log("init");
+	var router;
+	var Models= {};
+	var Collections = {};
+	var Views = {};
+
+
+	function init () {
 		initSocket();
-		addUIHandlers();
-		initCanvas();
-
-		$(window).on("load resize orientationchange", function() {
-			updateDimensions();
-		});
-	};
+		initBackbone();
+	}
 
 	var initSocket = function (){
 		if(socket) return; // already initialized
@@ -25,6 +21,9 @@ var App = function (options){
 		socket = io.connect(window.location.hostname);
 
 		// some debugging statements concerning socket.io
+		socket.on('disconnect', function(){
+			console.log('disconnected');
+		});
 		socket.on('reconnecting', function(seconds){
 			console.log('reconnecting in ' + seconds + ' seconds');
 		});
@@ -42,106 +41,254 @@ var App = function (options){
 		socket.on('soundstateChanged', onSoundstateChanged);
 	};
 
-	var initCanvas = function () {
+	var initBackbone = function () {
+		router = new Router();
 
-		ctx = canvas.getContext('2d');
-
-		canvas.width  = $('canvas').width();
-		canvas.height = $('canvas').height();
-
-		WIDTH = canvas.width;
-		HEIGHT = canvas.height;
-
-		ctx.fillStyle = 'rgb(200, 200, 200)';
-		ctx.lineWidth = 1;
-
-		soundbufferLENGTH = Math.floor(canvas.width/xDistance);
-		soundbuffer = new Array(soundbufferLENGTH);
-
-		draw();
+		Collections.channels = new Collections.Channels();
+		Views.menu = new Views.Menu({collection: Collections.channels});
+		Collections.channels.fetch({success: function () {
+			Backbone.history.start();
+		}});
 	};
 
-	var updateDimensions = function () {
+ 	var onSoundlevelChanged = function (data) {
+ 		// data.channel
+ 		// data.value
+ 		Collections.channels.get(data.channel).set('level', data.value);
+ 	};
 
+	var onSoundstateChanged = function (data) {
+		// data.channel
+		// data.soundstate
+		Collections.channels.get(data.channel).set('soundstate', data.soundstate);
 	};
 
-	var addUIHandlers = function () {
-		$('#ledenable').click(onEnableLed);
-		$('#leddisable').click(onDisableLed);
-	};
-
-	var onEnableLed = function (event) {
-		$.post('/rest/led', {state: 'on'});
-	};
-
-	var onDisableLed = function (event) {
-		$.post('/rest/led', {state: 'off'});
-	};
+	// Backbone ROUTER:
+	// ================
 
 
-	var onSoundlevelChanged = function (soundlevel) {
-		// console.log(soundlevel);
+	Router = Backbone.Router.extend({
+		routes: {
+			''                      : 'empty',
+			'channels/:channelid'   : 'channel'
+		},
 
-		if(soundlevel.channel != 0) return; //debug
+		empty: function() {
+			$('.maincontent').empty();
+		},
 
-		var percentage = soundlevel.value/1024;
+		channel: function(channelid) {
+			var channel = Collections.channels.get(channelid);
 
-		// soundlevel.db = 20.0 * log10(soundlevel.value+1);
-
-		soundbuffer = soundbuffer.slice(-(soundbufferLENGTH-1));
-		soundbuffer.push({percentage: percentage, soundon: currentSoundon});
-	};
-
-	var draw = function () {
-		var x_prev = 0;
-		var soundvalue_prev = 0;
-		var soundon_prev = false;
-
-
-		ctx.fillRect(0, 0, WIDTH, HEIGHT);
-		ctx.strokeStyle="black";
-
-
-		for (var i = 0; i < soundbuffer.length; i++) {
-			if(!soundbuffer[i]) continue;
-
-			var x = i*xDistance;
-			var soundvalue = HEIGHT-soundbuffer[i].percentage*HEIGHT;
-
-
-			if(soundbuffer[i].soundon != soundon_prev){
-				if(soundbuffer[i].soundon)
-					ctx.strokeStyle="red";
+			// used to highlight which channel is shown in the mainview:
+			Collections.channels.forEach(function (element, index, list) {
+				if(element == channel)
+					element.set('active', true);
 				else
-					ctx.strokeStyle="black";
+					element.set('active', false);
+			});
+
+			// create a new channelview and append it to maincontent:
+			var view = new Views.Channel({model: channel});
+			$('.maincontent').empty().append( view.render().el );
+		}
+
+	});
+
+
+
+
+	// Backbone MODELS AND COLLECTIONS:
+	// ================================
+
+	Models.Channel = Backbone.Model.extend({
+		defaults:{
+			active: false,
+			soundstate: false
+		}
+	});
+
+	Collections.Channels = Backbone.Collection.extend({
+		model: Models.Channel,
+		url: '/api/channels'
+	});
+
+	Views.Menu = Backbone.View.extend({
+		el: ".menu",
+
+		initialize: function(){
+			this.collection.on('add', this.addChannel, this);
+		},
+
+		addChannel: function(model){
+			var view = new Views.Menu.Channel({model: model});
+			this.$el.append( view.render().el );
+		}
+	});
+
+	Views.Menu.Channel = Backbone.View.extend({
+		template: '#channelmenuitem-tmpl',
+		className: 'channelmenuitem',
+
+		initialize: function(){
+			this.model.on('change:soundstate', this.renderSoundstate, this);
+			this.model.on('change:active', this.renderActiveState, this);
+		},
+
+		events : {
+			'click': 'this_clicked'
+		},
+
+		render: function(){
+			var html = $(this.template).tmpl(this.model.toJSON());
+			this.$el.html(html);
+			this.renderActiveState();
+			return this;
+		},
+
+		renderSoundstate: function (model, soundstate) {
+			if( soundstate == true ) {
+				this.$el.addClass('soundon');
+			}else{
+				this.$el.removeClass('soundon');
 			}
+		},
 
-			ctx.beginPath();
-			ctx.moveTo(x_prev, soundvalue_prev);
-			if(x_prev != 0)
-				ctx.lineTo(x, soundvalue);
-			ctx.stroke(); // draw it
+		renderActiveState: function () {
+			if( this.model.get('active') == true )
+				this.$el.addClass('active');
+			else
+				this.$el.removeClass('active');
+		},
+
+		this_clicked: function (event) {
+			router.navigate('/channels/'+this.model.id, {trigger: true});
+		}
+	});
+
+	Views.Channel = Backbone.View.extend({
+		template: '#channelview-tmpl',
+		className: 'channelview',
+
+		initialize: function(){
+			this.graph = null;
+
+			this.model.on('change:soundstate', this.renderSoundstate, this);
+			this.model.on('change:level', this.level_changed, this);
+		},
+
+		events : {
+			'click .activatesoundgraph': 'activatesoundgraph_clicked',
+			'click .deactivatesoundgraph': 'deactivatesoundgraph_clicked'
+		},
+
+		render: function(){
+			var html = $(this.template).tmpl(this.model.toJSON());
+			this.$el.html(html);
+			return this;
+		},
+
+		renderSoundstate: function (model, soundstate) {
+			if( soundstate == true ) {
+				this.$el.addClass('soundon');
+			}else{
+				this.$el.removeClass('soundon');
+			}
+		},
+
+		activatesoundgraph_clicked: function (event) {
+			this.$el.addClass('soundgraphactive');
+			this.initGraph();
+		},
+
+		deactivatesoundgraph_clicked: function (event) {
+			this.$el.removeClass('soundgraphactive');
+			this.destroyGraph();
+		},
+
+		level_changed: function () {
+			if(this.graph == null) return; // graph not initialized
+
+			var percentage = this.model.get('level')/1024;
+
+			// remove last item from buffer:
+			this.graph.soundbuffer = this.graph.soundbuffer.slice(-(this.graph.soundbufferLENGTH-1));
+
+			// add new item to buffer:
+			this.graph.soundbuffer.push({
+				percentage: percentage,
+				soundstate: this.model.get('soundstate') // current soundstate
+			});
+		},
+
+		initGraph: function () {
+			this.graph = {};
+
+			this.graph.canvas = this.$('.soundgraph')[0];
+			this.graph.ctx = this.graph.canvas.getContext('2d');
+
+			this.graph.canvas.width  = this.$('.soundgraph').width();
+			this.graph.canvas.height = this.$('.soundgraph').height();
+
+			this.graph.ctx.fillStyle = 'rgb(200, 200, 200)';
+			this.graph.ctx.lineWidth = 1;
+
+			this.graph.soundbufferLENGTH = Math.floor(this.graph.canvas.width/xDistance);
+			this.graph.soundbuffer = new Array(this.graph.soundbufferLENGTH);
+
+			this.drawGraph();
+		},
+
+		drawGraph: function () {
+			if(this.graph == null) return; // graph not initialized
+
+			var x_prev = 0;
+			var soundvaluePixels_prev = 0;
+			var soundstate_prev = false;
 
 
+			this.graph.ctx.fillRect(0, 0, this.graph.canvas.width, this.graph.canvas.height);
+			this.graph.ctx.strokeStyle = 'black';
 
 
-			x_prev = x;
-			soundvalue_prev = soundvalue;
-			soundon_prev = soundbuffer[i].soundon;
-		};
+			for (var i = 0; i < this.graph.soundbuffer.length; i++) {
+				if(!this.graph.soundbuffer[i]) continue;
+
+				var x = i*xDistance;
+				var soundlevelPixels = this.graph.canvas.height - this.graph.soundbuffer[i].percentage * this.graph.canvas.height;
 
 
-		// redraw:
-		requestAnimationFrame(draw);
-	};
+				if(this.graph.soundbuffer[i].soundstate != soundstate_prev){
+					if(this.graph.soundbuffer[i].soundstate)
+						this.graph.ctx.strokeStyle = 'red';
+					else
+						this.graph.ctx.strokeStyle = 'black';
+				}
 
-	var onSoundstateChanged = function (soundstate) {
-		currentSoundon = soundstate.soundon;
-	};
+				this.graph.ctx.beginPath();
+				this.graph.ctx.moveTo(x_prev, soundvaluePixels_prev);
+				if(x_prev != 0)
+					this.graph.ctx.lineTo(x, soundlevelPixels);
+				this.graph.ctx.stroke(); // draw it
 
-	var log10 = function (x) {
-		return Math.log(x) / Math.LN10;
-	};
+
+				x_prev = x;
+				soundvaluePixels_prev = soundlevelPixels;
+				soundstate_prev = this.graph.soundbuffer[i].soundstate;
+			};
+
+
+			// redraw:
+			var self = this;
+			requestAnimationFrame(function () {
+				self.drawGraph.call(self);
+			});
+		},
+
+		destroyGraph: function () {
+			this.graph = null;
+		}
+	});
 
 	return {
 		init: init
@@ -151,7 +298,12 @@ var App = function (options){
 
 
 $(function(){
-	var app = new App();
+	app = new App();
 	app.init();
 });
+
+
+
+
+
 

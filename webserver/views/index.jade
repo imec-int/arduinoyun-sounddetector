@@ -6,12 +6,34 @@ html
 		link(type='text/fonts', rel='stylesheet', src="/vendor/Roboto")
 		link(rel='stylesheet', href="/stylesheets/style.css")
 
-		script(src='/socket.io/socket.io.js')
-		script(type='text/javascript', src='/vendor/jquery.min.js')
-		script(type='text/javascript', src='/vendor/jquery.tmpl.min.js')
-		script(type='text/javascript', src='/javascripts/index.js')
 
 	body
-		.led
-			button.enable Led ON
-			button.disable Led OFF
+		.title MiX Sound Detector
+		.menu
+		.maincontent
+
+
+
+		script(type='text/javascript', src='/socket.io/socket.io.js')
+		script(type='text/javascript', src='/vendor/jquery.min.js')
+		script(type='text/javascript', src='/vendor/jquery.tmpl.min.js')
+
+		script(type='text/javascript', src='//cdnjs.cloudflare.com/ajax/libs/underscore.js/1.5.2/underscore-min.js')
+		script(type='text/javascript', src='//cdnjs.cloudflare.com/ajax/libs/backbone.js/1.1.0/backbone-min.js')
+
+		script(type='text/javascript', src='/javascripts/index.js')
+
+		script#channelmenuitem-tmpl(type="text/x-jquery-tmpl")
+			.name ${name}
+			.soundstate
+
+		script#channelview-tmpl(type="text/x-jquery-tmpl")
+			.name ${name}
+			br
+			button.activatesoundgraph Activate Sound Graph
+			button.deactivatesoundgraph Deactivate Sound Graph
+			br
+			br
+			canvas.soundgraph
+
+

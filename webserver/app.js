@@ -8,6 +8,20 @@ var serialport = require('serialport');
 var SerialPort = serialport.SerialPort;
 var net = require('net');
 var socketio = require('socket.io');
+var config = require('./config');
+
+var serialportname = '/dev/cu.usbmodemfd121'; // for debugging on local machine
+// var serialportname = '/dev/ttyATH0';
+
+// find serial ports:
+// serialport.list(function (err, ports) {
+//   ports.forEach(function(port) {
+//     console.log(port.comName);
+//     console.log(port.pnpId);
+//     console.log(port.manufacturer);
+//   });
+// });
+// return;
 
 
 // Webserver:
@@ -16,8 +30,8 @@ var app = express();
 
 app.configure(function(){
 	app.set('port', process.env.PORT || 3000);
-	// app.set('views', __dirname + '/views');
-	// app.set('view engine', 'jade');
+	app.set('views', __dirname + '/views');
+	app.set('view engine', 'jade');
 	app.use(express.favicon());
 	// app.use(express.logger('dev'));
 	app.use(express.bodyParser());
@@ -85,7 +99,7 @@ function ownparser () {
 	};
 }
 
-var sp = new SerialPort("/dev/ttyATH0", {
+var sp = new SerialPort(serialportname, {
 	parser: ownparser(),
 	baudrate: 9600
 });
@@ -97,7 +111,8 @@ serialport.on("error", function (err) {
 
 
 app.get('/', function (req, res) {
-	res.sendfile(__dirname + '/public/index.html');
+	// res.sendfile(__dirname + '/public/index.html');
+	res.render('index', {});
 });
 
 app.post('/rest/led', function (req, res){
@@ -110,6 +125,22 @@ app.post('/rest/led', function (req, res){
 	});
 
 	res.json(state);
+});
+
+app.post('/rest/monitorchannel', function (req, res) {
+	var action = req.body.action;
+	var channelnr = req.body.channelnr;
+
+	if(action == 'start'){
+		console.log('requesting channel monitoring from Arduino for channelnr: ' + channelnr);
+		sp.write( channelnr, function (err, results) {
+			if(err) return console.log('serial write err', err);
+		});
+	}else{
+		console.log('stopping channel monitoring');
+	}
+
+	res.json({error: 0});
 });
 
 
@@ -136,7 +167,7 @@ function parseSoundLevel (data) {
 		channel: data[4],
 		value: data.readUInt16BE(5) // last two bytes are a 16bit integer encoded big endian
 	};
-	console.log('sound level changed', soundlevel);
+	// console.log('sound level changed', soundlevel);
 
 
 	io.sockets.emit('soundlevelChanged', soundlevel);
@@ -145,7 +176,7 @@ function parseSoundLevel (data) {
 function parseSoundState (data) {
 	var state = {
 		channel: data[4],
-		soundon: (data[5] == 1) // boolean, true or false
+		soundstate: (data[5] == 1) // boolean, true or false
 	};
 	console.log('sound state changed', state);
 
@@ -157,6 +188,12 @@ function parseSoundState (data) {
 
 sp.on("close", function () {
 	console.log('serialport closed');
+});
+
+
+// rest interface to backbone:
+app.get('/api/channels', function (req, res) {
+	return res.send(config.channels);
 });
 
 
