@@ -3,6 +3,8 @@
 var express = require('express');
 var http = require('http')
 var path = require('path');
+var jade = require('jade');
+var fs = require('fs');
 var utils = require('./utils');
 var serialport = require('serialport');
 var SerialPort = serialport.SerialPort;
@@ -10,8 +12,11 @@ var net = require('net');
 var socketio = require('socket.io');
 var config = require('./config');
 
-var serialportname = '/dev/cu.usbmodemfd121'; // for debugging on local machine
-// var serialportname = '/dev/ttyATH0';
+var serialportname = '/dev/ttyATH0';
+
+if( process.env.NODE_ENV != 'production' ){
+	var serialportname = '/dev/cu.usbmodemfd121'; // for debugging on local machine
+}
 
 // find serial ports:
 // serialport.list(function (err, ports) {
@@ -22,6 +27,9 @@ var serialportname = '/dev/cu.usbmodemfd121'; // for debugging on local machine
 //   });
 // });
 // return;
+
+
+
 
 
 // Webserver:
@@ -109,10 +117,28 @@ serialport.on("error", function (err) {
 });
 
 
+// Compile index.html if we're not on production 'machine':
+if( process.env.NODE_ENV != 'production' ){
+	fs.readFile(__dirname + '/views/index.jade', 'utf8', function (err, data) {
+	    if (err) return console.log(err);
+
+	    var template = jade.compile(data);
+	    var html = template({});
+
+	    fs.writeFile(__dirname + '/public/index.html', html, function (err) {
+	    	if(err) return console.log(err);
+	    	console.log('New index.html rendered');
+	    });
+	});
+}
+
 
 app.get('/', function (req, res) {
-	// res.sendfile(__dirname + '/public/index.html');
-	res.render('index', {});
+	if( process.env.NODE_ENV == 'production' ){
+		res.sendfile(__dirname + '/public/index.html');
+	}else{
+		res.render('index', {});
+	}
 });
 
 app.post('/rest/led', function (req, res){

@@ -6,8 +6,8 @@ void sendSoundLevel(int pin, int level);
 void turnOffMonitoring();
 
 /* Variables -----------------------------------------------------------------*/
-// #define NodeSerial Serial1 // makes it a little easier to read the code :-) NodeSerial is the serial port that communicates with Node.js, accesible as /dev/ttyATH0 in Linux
-#define NodeSerial Serial // connect directly with laptop (for debugging purposes)
+#define NodeSerial Serial1 // makes it a little easier to read the code :-) NodeSerial is the serial port that communicates with Node.js, accesible as /dev/ttyATH0 in Linux
+// #define NodeSerial Serial // connect directly with laptop (for debugging purposes)
 
 int incomingByte = 0;
 
@@ -39,7 +39,7 @@ int nrOfConsecutiveSoundSamplesBeforeFlippingToSound[] = {5, 5, 5, 5, 5, 5};
 
 
 
-bool debug = false;
+bool debug = true;
 
 /* This function is called once at start up ----------------------------------*/
 void setup()
