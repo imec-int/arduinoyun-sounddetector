@@ -10,6 +10,7 @@ var serialport = require('serialport');
 var SerialPort = serialport.SerialPort;
 var net = require('net');
 var socketio = require('socket.io');
+var _ = require('underscore');
 var config = require('./config');
 
 var serialportname = '/dev/ttyATH0';
@@ -148,35 +149,6 @@ app.get('/', function (req, res) {
 	}
 });
 
-app.post('/rest/led', function (req, res){
-	var state = req.body.state;
-
-	console.log(state);
-
-	sp.write( (state=='on')?'a':'b', function (err, results) {
-		if(err) return console.log('serial write err', err);
-	});
-
-	res.json(state);
-});
-
-app.post('/rest/monitorchannel', function (req, res) {
-	var action = req.body.action;
-	var channelnr = req.body.channelnr;
-
-	if(action == 'start'){
-		console.log('requesting channel monitoring from Arduino for channelnr: ' + channelnr);
-		sp.write( channelnr, function (err, results) {
-			if(err) return console.log('serial write err', err);
-		});
-	}else{
-		console.log('stopping channel monitoring');
-	}
-
-	res.json({error: 0});
-});
-
-
 
 sp.on("open", function () {
 	console.log('serialport is open');
@@ -248,11 +220,98 @@ function disableSoundgraphMonitoring () {
 	});
 }
 
+function updateSilenceThreshold (channel, silenceThreshold) {
+	var buf = new Buffer(7);
+	buf[0] = 255;
+	buf[1] = 255;
+	buf[2] = 255;
+	buf[3] = 3; // update silenceThreshold
+	buf[4] = channel;
+
+	buf.writeUInt16BE(silenceThreshold, 5);
+
+	sp.write( buf , function (err, results) {
+		if(err) return console.log('serial write err', err);
+	});
+}
+
+function updateSoundThreshold (channel, soundThreshold) {
+	var buf = new Buffer(7);
+	buf[0] = 255;
+	buf[1] = 255;
+	buf[2] = 255;
+	buf[3] = 4; // update soundThreshold
+	buf[4] = channel;
+	buf.writeUInt16BE(soundThreshold, 5);
+
+	sp.write( buf , function (err, results) {
+		if(err) return console.log('serial write err', err);
+	});
+}
+
+function updateNrOfConsecutiveSilenceSamplesBeforeFlippingToSilence (channel, nrOfConsecutiveSilenceSamplesBeforeFlippingToSilence) {
+	var buf = new Buffer(7);
+	buf[0] = 255;
+	buf[1] = 255;
+	buf[2] = 255;
+	buf[3] = 5; // update nrOfConsecutiveSilenceSamplesBeforeFlippingToSilence
+	buf[4] = channel;
+	buf.writeUInt16BE(nrOfConsecutiveSilenceSamplesBeforeFlippingToSilence, 5);
+
+	sp.write( buf , function (err, results) {
+		if(err) return console.log('serial write err', err);
+	});
+}
+
+function updateNrOfConsecutiveSoundSamplesBeforeFlippingToSound (channel, nrOfConsecutiveSoundSamplesBeforeFlippingToSound) {
+	var buf = new Buffer(7);
+	buf[0] = 255;
+	buf[1] = 255;
+	buf[2] = 255;
+	buf[3] = 6; // update nrOfConsecutiveSoundSamplesBeforeFlippingToSound
+	buf[4] = channel;
+	buf.writeUInt16BE(nrOfConsecutiveSoundSamplesBeforeFlippingToSound, 5);
+
+	sp.write( buf , function (err, results) {
+		if(err) return console.log('serial write err', err);
+	});
+}
+
+
 
 // rest interface to backbone:
 app.get('/api/channels', function (req, res) {
 	return res.send(config.channels);
 });
+
+app.patch('/api/channels/:channelid', function (req, res) {
+	var channel = _.find(config.channels, function (channel) {
+		return channel.id == req.params.channelid;
+	});
+
+	if(req.body.silenceThreshold !== undefined) {
+		channel.silenceThreshold = req.body.silenceThreshold;
+		updateSilenceThreshold(channel.id, channel.silenceThreshold);
+	}
+
+	if(req.body.soundThreshold !== undefined) {
+		channel.soundThreshold = req.body.soundThreshold;
+		updateSoundThreshold(channel.id, channel.soundThreshold);
+	}
+
+	if(req.body.nrOfConsecutiveSilenceSamplesBeforeFlippingToSilence !== undefined) {
+		channel.nrOfConsecutiveSilenceSamplesBeforeFlippingToSilence = req.body.nrOfConsecutiveSilenceSamplesBeforeFlippingToSilence;
+		updateNrOfConsecutiveSilenceSamplesBeforeFlippingToSilence(channel.id, channel.nrOfConsecutiveSilenceSamplesBeforeFlippingToSilence);
+	}
+
+	if(req.body.nrOfConsecutiveSoundSamplesBeforeFlippingToSound !== undefined) {
+		channel.nrOfConsecutiveSoundSamplesBeforeFlippingToSound = req.body.nrOfConsecutiveSoundSamplesBeforeFlippingToSound;
+		updateNrOfConsecutiveSoundSamplesBeforeFlippingToSound(channel.id, channel.nrOfConsecutiveSoundSamplesBeforeFlippingToSound);
+	}
+
+	return res.send(channel);
+});
+
 
 // request soundgraph data for channel:
 app.post('/api/soundgraph/on', function (req, res) {

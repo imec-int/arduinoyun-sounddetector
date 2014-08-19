@@ -182,8 +182,12 @@ var App = function (options) {
 		},
 
 		events : {
-			'click .activatesoundgraph': 'activatesoundgraph_clicked',
-			'click .deactivatesoundgraph': 'deactivatesoundgraph_clicked'
+			'click .activatesoundgraph': 'activatesoundgraph_clickhandler',
+			'click .deactivatesoundgraph': 'deactivatesoundgraph_clickhandler',
+			'change .silenceThreshold': 'silenceThreshold_changehandler',
+			'change .soundThreshold': 'soundThreshold_changehandler',
+			'change .nrOfConsecutiveSilenceSamplesBeforeFlippingToSilence': 'nrOfConsecutiveSilenceSamplesBeforeFlippingToSilence_changehandler',
+			'change .nrOfConsecutiveSoundSamplesBeforeFlippingToSound': 'nrOfConsecutiveSoundSamplesBeforeFlippingToSound_changehandler'
 		},
 
 		render: function(){
@@ -200,17 +204,7 @@ var App = function (options) {
 			}
 		},
 
-		activatesoundgraph_clicked: function (event) {
-			this.$el.addClass('soundgraphactive');
-			this.initGraph();
-		},
-
-		deactivatesoundgraph_clicked: function (event) {
-			this.$el.removeClass('soundgraphactive');
-			this.destroyGraph();
-		},
-
-		level_changed: function () {
+		level_changed: function (model, level) {
 			if(this.graph == null) return; // graph not initialized
 
 			var percentage = this.model.get('level')/1024;
@@ -232,7 +226,7 @@ var App = function (options) {
 
 			this.graph = {};
 
-			this.graph.canvas = this.$('.soundgraph')[0];
+			this.graph.canvas = this.$('.soundgraph canvas')[0];
 			this.graph.ctx = this.graph.canvas.getContext('2d');
 
 			this.graph.canvas.width  = this.$('.soundgraph').width();
@@ -257,6 +251,27 @@ var App = function (options) {
 
 			this.graph.ctx.fillRect(0, 0, this.graph.canvas.width, this.graph.canvas.height);
 			this.graph.ctx.strokeStyle = 'black';
+
+			// draw threshold lines:
+			var y_slicenceThreshold = this.graph.canvas.height - this.model.get('silenceThreshold')/1024*this.graph.canvas.height;
+			var y_soundThreshold = this.graph.canvas.height - this.model.get('soundThreshold')/1024*this.graph.canvas.height;
+
+
+			this.graph.ctx.beginPath();
+			this.graph.ctx.lineWidth=2;
+			this.graph.ctx.moveTo(0, y_slicenceThreshold);
+			this.graph.ctx.lineTo(this.graph.canvas.width, y_slicenceThreshold);
+			this.graph.ctx.stroke(); // draw it
+
+			this.graph.ctx.strokeStyle = 'red';
+
+			this.graph.ctx.beginPath();
+			this.graph.ctx.moveTo(0, y_soundThreshold);
+			this.graph.ctx.lineTo(this.graph.canvas.width, y_soundThreshold);
+			this.graph.ctx.stroke(); // draw it
+
+			this.graph.ctx.strokeStyle = 'black';
+			this.graph.ctx.lineWidth=1;
 
 
 			for (var i = 0; i < this.graph.soundbuffer.length; i++) {
@@ -299,6 +314,33 @@ var App = function (options) {
 			});
 
 			this.graph = null;
+		},
+
+		// UI Handlers:
+		activatesoundgraph_clickhandler: function (event) {
+			this.$el.addClass('soundgraphactive');
+			this.initGraph();
+		},
+
+		deactivatesoundgraph_clickhandler: function (event) {
+			this.$el.removeClass('soundgraphactive');
+			this.destroyGraph();
+		},
+
+		silenceThreshold_changehandler: function (event) {
+			this.model.save('silenceThreshold', this.$('.silenceThreshold').val(), {patch: true});
+		},
+
+		soundThreshold_changehandler: function (event) {
+			this.model.save('soundThreshold', this.$('.soundThreshold').val(), {patch: true});
+		},
+
+		nrOfConsecutiveSilenceSamplesBeforeFlippingToSilence_changehandler: function (event) {
+			this.model.save('nrOfConsecutiveSilenceSamplesBeforeFlippingToSilence', this.$('.nrOfConsecutiveSilenceSamplesBeforeFlippingToSilence').val(), {patch: true});
+		},
+
+		nrOfConsecutiveSoundSamplesBeforeFlippingToSound_changehandler: function (event) {
+			this.model.save('nrOfConsecutiveSoundSamplesBeforeFlippingToSound', this.$('.nrOfConsecutiveSoundSamplesBeforeFlippingToSound').val(), {patch: true});
 		}
 	});
 

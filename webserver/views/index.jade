@@ -34,6 +34,29 @@ html
 			button.deactivatesoundgraph Deactivate Sound Graph
 			br
 			br
-			canvas.soundgraph
+			.soundgraph
+				canvas
+			.settings
+				label Silence threshold:
+				br
+				input.silenceThreshold(type='number', value='${silenceThreshold}')
+				br
+				br
+				label Sound threshold:
+				br
+				input.soundThreshold(type='number', value='${soundThreshold}')
+				br
+				br
+				label Number of consecutive silence samples before flipping to silence (1 sample = 50ms):
+				br
+				input.nrOfConsecutiveSilenceSamplesBeforeFlippingToSilence(type='number', value='${nrOfConsecutiveSilenceSamplesBeforeFlippingToSilence}')
+				br
+				br
+				label Number of consecutive sound samples before flipping to sound (1 sample = 50ms):
+				br
+				input.nrOfConsecutiveSoundSamplesBeforeFlippingToSound(type='number', value='${nrOfConsecutiveSoundSamplesBeforeFlippingToSound}')
+				br
+				br
+				br
 
 
