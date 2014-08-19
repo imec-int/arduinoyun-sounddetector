@@ -59,6 +59,13 @@ var webserver = http.createServer(app).listen(app.get('port'), function(){
 var io = socketio.listen(webserver);
 io.set('log level', 0);
 
+io.sockets.on('connection', function (socket) {
+	socket.on('disconnect', function() {
+		console.log('> user disconnected, disabling soundgraph monitoring');
+		disableSoundgraphMonitoring();
+	});
+});
+
 
 // Serial:
 
@@ -216,15 +223,7 @@ sp.on("close", function () {
 });
 
 
-// rest interface to backbone:
-app.get('/api/channels', function (req, res) {
-	return res.send(config.channels);
-});
-
-// request soundgraph data for channel:
-app.post('/api/soundgraph/on', function (req, res) {
-	var channel = parseInt(req.body.channel);
-
+function enableSoundgraphMonitoring (channel) {
 	var buf = new Buffer(5);
 	buf[0] = 255;
 	buf[1] = 255;
@@ -235,14 +234,9 @@ app.post('/api/soundgraph/on', function (req, res) {
 	sp.write( buf , function (err, results) {
 		if(err) return console.log('serial write err', err);
 	});
+}
 
-
-	res.json('requested');
-});
-
-app.post('/api/soundgraph/off', function (req, res) {
-	var channel = parseInt(req.body.channel);
-
+function disableSoundgraphMonitoring () {
 	var buf = new Buffer(4);
 	buf[0] = 255;
 	buf[1] = 255;
@@ -252,7 +246,24 @@ app.post('/api/soundgraph/off', function (req, res) {
 	sp.write( buf , function (err, results) {
 		if(err) return console.log('serial write err', err);
 	});
+}
 
+
+// rest interface to backbone:
+app.get('/api/channels', function (req, res) {
+	return res.send(config.channels);
+});
+
+// request soundgraph data for channel:
+app.post('/api/soundgraph/on', function (req, res) {
+	var channel = parseInt(req.body.channel);
+	enableSoundgraphMonitoring(channel);
+	res.json('requested');
+});
+
+app.post('/api/soundgraph/off', function (req, res) {
+	var channel = parseInt(req.body.channel);
+	disableSoundgraphMonitoring();
 	res.json('requested');
 });
 

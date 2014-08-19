@@ -91,6 +91,10 @@ var App = function (options) {
 			// create a new channelview and append it to maincontent:
 			var view = new Views.Channel({model: channel});
 			$('.maincontent').empty().append( view.render().el );
+
+
+			// turn off soundgraph monitoring when switching channels in UI:
+			$.post('/api/soundgraph/off');
 		}
 
 	});
