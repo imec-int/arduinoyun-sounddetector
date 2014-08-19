@@ -222,6 +222,10 @@ var App = function (options) {
 		},
 
 		initGraph: function () {
+			$.post('/api/soundgraph/on', {
+				channel: this.model.id
+			});
+
 			this.graph = {};
 
 			this.graph.canvas = this.$('.soundgraph')[0];
@@ -286,6 +290,10 @@ var App = function (options) {
 		},
 
 		destroyGraph: function () {
+			$.post('/api/soundgraph/off', {
+				channel: this.model.id
+			});
+
 			this.graph = null;
 		}
 	});

@@ -193,9 +193,8 @@ function parseSoundLevel (data) {
 		channel: data[4],
 		value: data.readUInt16BE(5) // last two bytes are a 16bit integer encoded big endian
 	};
-	// console.log('sound level changed', soundlevel);
 
-
+	console.log('sound level changed', soundlevel);
 	io.sockets.emit('soundlevelChanged', soundlevel);
 }
 
@@ -204,8 +203,8 @@ function parseSoundState (data) {
 		channel: data[4],
 		soundstate: (data[5] == 1) // boolean, true or false
 	};
-	console.log('sound state changed', state);
 
+	console.log('sound state changed', state);
 	io.sockets.emit('soundstateChanged', state);
 
 	//data[3] should be emtpy
@@ -221,6 +220,42 @@ sp.on("close", function () {
 app.get('/api/channels', function (req, res) {
 	return res.send(config.channels);
 });
+
+// request soundgraph data for channel:
+app.post('/api/soundgraph/on', function (req, res) {
+	var channel = parseInt(req.body.channel);
+
+	var buf = new Buffer(5);
+	buf[0] = 255;
+	buf[1] = 255;
+	buf[2] = 255;
+	buf[3] = 1; // enable monitoring
+	buf[4] = channel;
+
+	sp.write( buf , function (err, results) {
+		if(err) return console.log('serial write err', err);
+	});
+
+
+	res.json('requested');
+});
+
+app.post('/api/soundgraph/off', function (req, res) {
+	var channel = parseInt(req.body.channel);
+
+	var buf = new Buffer(4);
+	buf[0] = 255;
+	buf[1] = 255;
+	buf[2] = 255;
+	buf[3] = 2; // disable monitoring
+
+	sp.write( buf , function (err, results) {
+		if(err) return console.log('serial write err', err);
+	});
+
+	res.json('requested');
+});
+
 
 
 

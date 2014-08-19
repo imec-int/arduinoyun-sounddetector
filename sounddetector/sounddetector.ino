@@ -7,7 +7,7 @@ void turnOffMonitoring();
 
 /* Variables -----------------------------------------------------------------*/
 #define NodeSerial Serial1 // makes it a little easier to read the code :-) NodeSerial is the serial port that communicates with Node.js, accesible as /dev/ttyATH0 in Linux
-// #define NodeSerial Serial // connect directly with laptop (for debugging purposes)
+//#define NodeSerial Serial // connect directly with laptop (for debugging purposes)
 
 int incomingByte = 0;
 
@@ -38,6 +38,11 @@ int nrOfConsecutiveSilenceSamplesBeforeFlippingToSilence[] = {12, 12, 12, 12, 12
 int nrOfConsecutiveSoundSamplesBeforeFlippingToSound[] = {5, 5, 5, 5, 5, 5};
 
 
+// monitor settings:
+bool enableMonitoring = false;
+int channelToMonitor = 0;
+
+
 
 bool debug = true;
 
@@ -60,7 +65,7 @@ void setup()
   if(debug) Serial.begin(9600);
 }
 
-/* This function loops forever (every 5ms) ------------------------------------*/
+/* This function loops forever -----------------------------------------------*/
 void loop() {
   
   if(millis() - startMillis < sampleWindow) {
@@ -77,7 +82,7 @@ void loop() {
       }
     }
   }else{
-    // we've collected enough data, lets use it
+    // we've collected enough data, let's use it
    
     for (int pin = 0; pin < pinCount; ++pin) {
       // store soundValue:      
@@ -92,7 +97,7 @@ void loop() {
       checkSoundState(pin, soundValues[pin]);
       
       // send sound level (if required):
-      if(pin == 0)
+      if(enableMonitoring && channelToMonitor == pin)
         sendSoundLevel(pin, soundValues[pin]);
     }
   }
@@ -179,39 +184,50 @@ void sendSoundLevel(int pin, int level){
 
 
 
-
+int startByteCounter = 0;
 
 void readIncommingNodeData() {
   // READ RESPONSE
-  if( NodeSerial.available() ) {
-    // empty incomingByte:
-    incomingByte = 0x00;
-
-    // read first byte:
+  while( NodeSerial.available() ) {
     incomingByte = NodeSerial.read();
     
-    if(incomingByte == 255) {
-      turnOffMonitoring();
-      if(debug) Serial.print("turn off monitoring");
-    }else{
-      // do something with the channel:
-      int channel = incomingByte;
-      if(debug) Serial.print("do something with channel ");
-      if(debug) Serial.println(channel, DEC);
-    }
+    if(debug) Serial.print("> incomingByte (expecting 3x255=start of message): ");
+    if(debug) Serial.println(incomingByte);
 
-    // read the rest of the buffer so that it's empty
-    while(NodeSerial.available())
-    {
-      NodeSerial.read();
+  
+    if(incomingByte == 255){
+      startByteCounter++;
+  
+      if(startByteCounter >= 3){
+        if(debug) Serial.println("startByteCounter is bigger than 3");
+        
+        incomingByte = NodeSerial.read();
+        if(debug) Serial.print("> incomingByte: ");
+        if(debug) Serial.println(incomingByte);
+        
+        if(incomingByte == 1) { // enable monitoring
+          if(debug) Serial.println("setting enableMonitoring to true");
+          enableMonitoring = true;
+          
+          incomingByte = NodeSerial.read();
+          if(debug) Serial.print("> incomingByte: ");
+          if(debug) Serial.println(incomingByte);
+          
+          channelToMonitor = incomingByte;
+          if(debug) Serial.print("set channelToMonitor to ");
+          if(debug) Serial.println(channelToMonitor);
+        }else if(incomingByte == 2) { // disable monitoring
+          if(debug) Serial.println("setting enableMonitoring to false");
+          enableMonitoring = false;
+        }
+       
+        startByteCounter = 0;
+      }
+      
+      
+    }else{
+      startByteCounter = 0;
     }
   }
 }
-
-void turnOffMonitoring() {
-  
-}
-
-
-
 
