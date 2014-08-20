@@ -3,7 +3,7 @@ void readIncommingNodeData();
 void checkSoundState(int pin, int level);
 void sendSoundState(int pin, int state);
 void sendSoundLevel(int pin, int level);
-void turnOffMonitoring();
+void reportSettings(int pin);
 
 /* Variables -----------------------------------------------------------------*/
 #define NodeSerial Serial1 // makes it a little easier to read the code :-) NodeSerial is the serial port that communicates with Node.js, accesible as /dev/ttyATH0 in Linux
@@ -44,6 +44,11 @@ int nrOfConsecutiveSoundSamplesBeforeFlippingToSound[] = {5, 5, 5, 5, 5, 5};
 // monitor settings:
 bool enableMonitoring = false;
 int channelToMonitor = 0;
+
+// reporting settings:
+unsigned long reportingInterval = 10000;
+unsigned long lastReportingTime = millis();
+int lastReportedPin = pinCount - 1;
 
 
 /* This function is called once at start up ----------------------------------*/
@@ -102,6 +107,19 @@ void loop() {
   }
   
   readIncommingNodeData();
+  
+  // reports the settings of every pin (channel) every x milliseconds 
+  unsigned long interval = millis() - lastReportingTime;
+  if( interval > reportingInterval) {
+    int pin = lastReportedPin + 1;
+    if(pin == pinCount)
+      pin = 0;
+
+    reportSettings(pin);
+    
+    lastReportedPin = pin;
+    lastReportingTime = millis();
+  }
 }
 
 void checkSoundState(int pin, int level){
@@ -156,31 +174,41 @@ void sendSoundState(int pin) {
   NodeSerial.write((byte)255);
   NodeSerial.write((byte)255);
   NodeSerial.write((byte)255);
-  NodeSerial.write((byte)02); // 02 = soundstate
+  NodeSerial.write((byte)1); // 1 = soundstate
   NodeSerial.write((byte)pin); // channel
   NodeSerial.write((byte)state); // volumeon
-  NodeSerial.write((byte)0); // empty byte, because we always expect 4 bytes ;-)
 }
 
-
-
 void sendSoundLevel(int pin, int level){  
-  uint16_t number = level;
-  uint16_t mask   = B11111111;
-  uint8_t first_half   = number >> 8;
-  uint8_t sencond_half = number & mask;
-  
   // always start with 3 bytes of 255 so that Node.js knows were this 'packet' starts:
   NodeSerial.write((byte)255);
   NodeSerial.write((byte)255);
   NodeSerial.write((byte)255);
-  NodeSerial.write((byte)03); // 03 = soundlevel
+  NodeSerial.write((byte)2); // 2 = soundlevel
   NodeSerial.write((byte)pin);  // channel
-  NodeSerial.write((byte)first_half);   // value, first byte (Big Endian)
-  NodeSerial.write((byte)sencond_half); // value, last byte  (Big Endian)
+  NodeSerial.write((byte)(level >> 8));   // value, first byte (Big Endian)
+  NodeSerial.write((byte)(level & 0xff)); // value, last byte  (Big Endian)
 }
 
-
+void reportSettings(int pin) {
+  if(debug) Serial.print("Reporting settings of pin ");
+  if(debug) Serial.println(pin);
+     
+  // always start with 3 bytes of 255 so that Node.js knows were a message starts:
+  NodeSerial.write((byte)255);
+  NodeSerial.write((byte)255);
+  NodeSerial.write((byte)255);
+  NodeSerial.write((byte)3);    // 3 = send settings
+  NodeSerial.write((byte)pin);  // channel
+  NodeSerial.write((byte)(silenceThreshold[pin] >> 8));
+  NodeSerial.write((byte)(silenceThreshold[pin] & 0xff));
+  NodeSerial.write((byte)(soundThreshold[pin] >> 8));
+  NodeSerial.write((byte)(soundThreshold[pin] & 0xff));
+  NodeSerial.write((byte)(nrOfConsecutiveSilenceSamplesBeforeFlippingToSilence[pin] >> 8));
+  NodeSerial.write((byte)(nrOfConsecutiveSilenceSamplesBeforeFlippingToSilence[pin] & 0xff));
+  NodeSerial.write((byte)(nrOfConsecutiveSoundSamplesBeforeFlippingToSound[pin] >> 8));
+  NodeSerial.write((byte)(nrOfConsecutiveSoundSamplesBeforeFlippingToSound[pin] & 0xff));
+}
 
 
 int startByteCounter = 0;
@@ -224,7 +252,7 @@ void readIncommingNodeData() {
           while( !NodeSerial.available() ){ }
           int pin = NodeSerial.read();
 
-          if(debug) Serial.print("updating settings of pin ");
+          if(debug) Serial.print("incomming settings of pin ");
           if(debug) Serial.println(pin);
           
           for (int i = 0; i < 4; ++i) {
@@ -239,7 +267,6 @@ void readIncommingNodeData() {
   
             int value = (firstByte << 8 ) | (secondByte & 0xff);
             
-              
             switch (i) {
               case 0:
                 if(debug) Serial.print("silenceThreshold: "); if(debug) Serial.println(value);
@@ -257,78 +284,11 @@ void readIncommingNodeData() {
                 if(debug) Serial.print("nrOfConsecutiveSoundSamplesBeforeFlippingToSound: "); if(debug) Serial.println(value);
                 nrOfConsecutiveSoundSamplesBeforeFlippingToSound[pin] = value;
                 break;
-            }
-          }
+            }// end switch
+          }// end for
           
-        }else if(incomingByte == 4) { // update soundThreshold
-          if(debug) Serial.println("updating soundThreshold");
           
-          while( !NodeSerial.available() ){ }
-          incomingByte = NodeSerial.read();
-          int pin  = incomingByte;
-          if(debug) Serial.print("on pin: ");
-          if(debug) Serial.println(pin);
-          
-          while( !NodeSerial.available() ){ }
-          incomingByte = NodeSerial.read();
-          uint8_t firstByte = incomingByte;
-          
-          while( !NodeSerial.available() ){ }
-          incomingByte = NodeSerial.read();
-          uint8_t secondByte = incomingByte;
-          
-          int value = (firstByte << 8 ) | (secondByte & 0xff);
-          if(debug) Serial.print("soundThreshold: ");
-          if(debug) Serial.println(value);
-
-          soundThreshold[pin] = value;  
-        
-        }else if(incomingByte == 5) { // update nrOfConsecutiveSilenceSamplesBeforeFlippingToSilence
-          if(debug) Serial.println("updating nrOfConsecutiveSilenceSamplesBeforeFlippingToSilence");
-          
-          while( !NodeSerial.available() ){ }
-          incomingByte = NodeSerial.read();
-          int pin  = incomingByte;
-          if(debug) Serial.print("on pin: ");
-          if(debug) Serial.println(pin);
-          
-          while( !NodeSerial.available() ){ }
-          incomingByte = NodeSerial.read();
-          uint8_t firstByte = incomingByte;
-          
-          while( !NodeSerial.available() ){ }
-          incomingByte = NodeSerial.read();
-          uint8_t secondByte = incomingByte;
-          
-          int value = (firstByte << 8 ) | (secondByte & 0xff);
-          if(debug) Serial.print("nrOfConsecutiveSilenceSamplesBeforeFlippingToSilence: ");
-          if(debug) Serial.println(value);
-
-          nrOfConsecutiveSilenceSamplesBeforeFlippingToSilence[pin] = value;  
-        
-        }else if(incomingByte == 6) { // update nrOfConsecutiveSoundSamplesBeforeFlippingToSound
-          if(debug) Serial.println("updating nrOfConsecutiveSoundSamplesBeforeFlippingToSound");
-          
-          while( !NodeSerial.available() ){ }
-          incomingByte = NodeSerial.read();
-          int pin  = incomingByte;
-          if(debug) Serial.print("on pin: ");
-          if(debug) Serial.println(pin);
-          
-          while( !NodeSerial.available() ){ }
-          incomingByte = NodeSerial.read();
-          uint8_t firstByte = incomingByte;
-          
-          while( !NodeSerial.available() ){ }
-          incomingByte = NodeSerial.read();
-          uint8_t secondByte = incomingByte;
-          
-          int value = (firstByte << 8 ) | (secondByte & 0xff);
-          if(debug) Serial.print("nrOfConsecutiveSoundSamplesBeforeFlippingToSound: ");
-          if(debug) Serial.println(value);
-          
-          nrOfConsecutiveSoundSamplesBeforeFlippingToSound[pin] = value;  
-
+          reportSettings(pin); //report settings back to Node, just to make sure they are set
         }
        
         startByteCounter = 0;
@@ -340,4 +300,6 @@ void readIncommingNodeData() {
     }
   }
 }
+
+
 

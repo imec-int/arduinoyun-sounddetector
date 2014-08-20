@@ -70,47 +70,97 @@ io.sockets.on('connection', function (socket) {
 
 // Serial:
 
-// my own parser (waits for 3 times 255 and then read the next 4 bytes):
+// my own parser (waits for 3 times 255):
 function ownparser () {
 	var data = new Buffer(0);
 
 	return function (emitter, buffer){
-		// console.log('rawbuffer', buffer);
+		console.log('rawbuffer', buffer);
 
 		data = Buffer.concat([data, buffer]);
 
-		while(data.length >= 7){
+		var checkfornewmessage = false;
+		if(data.length > 0)
+			checkfornewmessage = true;
 
-			var times255 = 0;
-			var startindex;
+		while(checkfornewmessage){
+			checkfornewmessage = false;
 
+			var startByteCounter = 0;
+			var newMessageInTheMaking = false;
 			for (var i = 0; i < data.length; i++) {
 				if(data[i] == 255){
-					times255++;
+					startByteCounter++;
 				}else{
-					if(times255 >= 3){
-						// we have a starting point:
-						startindex = i-3;
-						break;
+					// first byte that's not 255 comes in
+					// check if we have 3 start bytes:
+					if(startByteCounter >=3){
+						// good, this must a new message
+						newMessageInTheMaking = true;
+						break; // stop looking for other bytes:
 					}else{
-						times255 = 0;
-						startindex = null;
+						// to bad, only 2 or less bytes where 255:
+						startByteCounter = 0;
 					}
 				}
-			};
-
-			if(startindex !== null){
-				data = data.slice(startindex);
 			}
 
-			// get first 7 bytes:
-			var out = data.slice(0,7);
+			if(!newMessageInTheMaking) return; //wait some more until we have more bytes
 
-			// leave the rest for the next time/whileloop
-			data = data.slice(7);
 
-			// emit those 7 bytes:
+			// find first occurrence of 255:
+			var firstOccurenceOf255 = null;
+			for (var i = 0; i < data.length; i++) {
+				if(data[i] == 255){
+					firstOccurenceOf255 = i;
+					break;
+				}
+			}
+
+			// cut of all data before this firstOccurenceOf255:
+			data = data.slice(firstOccurenceOf255);
+
+			// check if byte 4 is not 255:
+			while(data[3] == 255){
+				// cut off the buffer so that byte 4 is not 255:
+				data = data.slice(1);
+			}
+
+
+			// now check for type of message:
+			// 1 = soundstate
+			// 2 = soundlevel
+			// 3 = incomming settings
+
+			var out;
+
+			if( data[3] == 1 ){
+				// we expect 2 more bytes to follow (so that's 6 bytes in total):
+				if(data.length < 6) return; // wait for more bytes
+				out = data.slice(0, 6);
+				data = data.slice(6);
+			}
+
+			if( data[3] == 2 ){
+				// we expect 3 more bytes to follow (so that's 7 bytes in total):
+				if(data.length < 7) return; // wait for more bytes
+				out = data.slice(0, 7);
+				data = data.slice(7);
+			}
+
+			if( data[3] == 3 ){
+				// we expect 9 more bytes to follow (so that's 13 bytes in total):
+				if(data.length < 13) return; // wait for more bytes
+				out = data.slice(0, 13);
+				data = data.slice(13);
+			}
+
+			// emit those 6,7 or 13 bytes:
 			emitter.emit('data', out);
+
+			if(data.length>0){
+				checkfornewmessage = true;
+			}
 		}
 	};
 }
@@ -156,14 +206,18 @@ sp.on("open", function () {
 
 
 sp.on('data', function (data) {
-	// console.log(data);
+	console.log(data);
 
-	if(data[3] == 02){
+	if(data[3] == 1){
 		return parseSoundState(data);
 	}
 
-	if(data[3] == 03){
+	if(data[3] == 2){
 		return parseSoundLevel(data);
+	}
+
+	if(data[3] == 3){
+		return parseSettings(data);
 	}
 });
 
@@ -185,8 +239,17 @@ function parseSoundState (data) {
 
 	console.log('sound state changed', state);
 	io.sockets.emit('soundstateChanged', state);
+}
 
-	//data[3] should be emtpy
+function parseSettings (data) {
+	var channel = {
+		id: data[4],
+		silenceThreshold: data.readUInt16BE(5),
+		soundThreshold: data.readUInt16BE(7),
+		nrOfConsecutiveSilenceSamplesBeforeFlippingToSilence: data.readUInt16BE(9),
+		nrOfConsecutiveSoundSamplesBeforeFlippingToSound: data.readUInt16BE(11)
+	}
+	console.log('incomming settings:', channel);
 }
 
 
