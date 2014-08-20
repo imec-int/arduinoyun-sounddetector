@@ -195,6 +195,8 @@ sp.on("close", function () {
 });
 
 
+
+
 function enableSoundgraphMonitoring (channel) {
 	var buf = new Buffer(5);
 	buf[0] = 255;
@@ -220,63 +222,28 @@ function disableSoundgraphMonitoring () {
 	});
 }
 
-function updateSilenceThreshold (channel, silenceThreshold) {
-	var buf = new Buffer(7);
+function sendSettings (channelid) {
+	var channel = _.find(config.channels, function (channel) {
+		return channel.id == channelid;
+	});
+
+	var buf = new Buffer(13);
 	buf[0] = 255;
 	buf[1] = 255;
 	buf[2] = 255;
-	buf[3] = 3; // update silenceThreshold
-	buf[4] = channel;
+	buf[3] = 3; // update settings
+	buf[4] = channel.id;
+	buf.writeUInt16BE(channel.silenceThreshold, 5);
+	buf.writeUInt16BE(channel.soundThreshold, 7);
+	buf.writeUInt16BE(channel.nrOfConsecutiveSilenceSamplesBeforeFlippingToSilence, 9);
+	buf.writeUInt16BE(channel.nrOfConsecutiveSoundSamplesBeforeFlippingToSound, 11);
 
-	buf.writeUInt16BE(silenceThreshold, 5);
-
-	sp.write( buf , function (err, results) {
-		if(err) return console.log('serial write err', err);
-	});
-}
-
-function updateSoundThreshold (channel, soundThreshold) {
-	var buf = new Buffer(7);
-	buf[0] = 255;
-	buf[1] = 255;
-	buf[2] = 255;
-	buf[3] = 4; // update soundThreshold
-	buf[4] = channel;
-	buf.writeUInt16BE(soundThreshold, 5);
+	console.log('sending settings of channel ' + channel.id);
 
 	sp.write( buf , function (err, results) {
-		if(err) return console.log('serial write err', err);
+		if(err) return console.log('serial error when sending settings for channel ' + channel.id, err);
 	});
 }
-
-function updateNrOfConsecutiveSilenceSamplesBeforeFlippingToSilence (channel, nrOfConsecutiveSilenceSamplesBeforeFlippingToSilence) {
-	var buf = new Buffer(7);
-	buf[0] = 255;
-	buf[1] = 255;
-	buf[2] = 255;
-	buf[3] = 5; // update nrOfConsecutiveSilenceSamplesBeforeFlippingToSilence
-	buf[4] = channel;
-	buf.writeUInt16BE(nrOfConsecutiveSilenceSamplesBeforeFlippingToSilence, 5);
-
-	sp.write( buf , function (err, results) {
-		if(err) return console.log('serial write err', err);
-	});
-}
-
-function updateNrOfConsecutiveSoundSamplesBeforeFlippingToSound (channel, nrOfConsecutiveSoundSamplesBeforeFlippingToSound) {
-	var buf = new Buffer(7);
-	buf[0] = 255;
-	buf[1] = 255;
-	buf[2] = 255;
-	buf[3] = 6; // update nrOfConsecutiveSoundSamplesBeforeFlippingToSound
-	buf[4] = channel;
-	buf.writeUInt16BE(nrOfConsecutiveSoundSamplesBeforeFlippingToSound, 5);
-
-	sp.write( buf , function (err, results) {
-		if(err) return console.log('serial write err', err);
-	});
-}
-
 
 
 // rest interface to backbone:
@@ -289,25 +256,30 @@ app.patch('/api/channels/:channelid', function (req, res) {
 		return channel.id == req.params.channelid;
 	});
 
+	var changesHappened = false;
+
 	if(req.body.silenceThreshold !== undefined) {
 		channel.silenceThreshold = req.body.silenceThreshold;
-		updateSilenceThreshold(channel.id, channel.silenceThreshold);
+		changesHappened = true;
 	}
 
 	if(req.body.soundThreshold !== undefined) {
 		channel.soundThreshold = req.body.soundThreshold;
-		updateSoundThreshold(channel.id, channel.soundThreshold);
+		changesHappened = true;
 	}
 
 	if(req.body.nrOfConsecutiveSilenceSamplesBeforeFlippingToSilence !== undefined) {
 		channel.nrOfConsecutiveSilenceSamplesBeforeFlippingToSilence = req.body.nrOfConsecutiveSilenceSamplesBeforeFlippingToSilence;
-		updateNrOfConsecutiveSilenceSamplesBeforeFlippingToSilence(channel.id, channel.nrOfConsecutiveSilenceSamplesBeforeFlippingToSilence);
+		changesHappened = true;
 	}
 
 	if(req.body.nrOfConsecutiveSoundSamplesBeforeFlippingToSound !== undefined) {
 		channel.nrOfConsecutiveSoundSamplesBeforeFlippingToSound = req.body.nrOfConsecutiveSoundSamplesBeforeFlippingToSound;
-		updateNrOfConsecutiveSoundSamplesBeforeFlippingToSound(channel.id, channel.nrOfConsecutiveSoundSamplesBeforeFlippingToSound);
+		changesHappened = true;
 	}
+
+	if(changesHappened)
+		sendSettings(channel.id);
 
 	return res.send(channel);
 });

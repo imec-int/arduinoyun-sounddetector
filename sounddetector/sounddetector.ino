@@ -49,8 +49,7 @@ int channelToMonitor = 0;
 /* This function is called once at start up ----------------------------------*/
 void setup()
 {
-  for (int pin = 0; pin < pinCount; ++pin)
-  {
+  for (int pin = 0; pin < pinCount; ++pin) {
     // register every pin as input:
     pinMode(soundPins[pin], INPUT);
     
@@ -221,28 +220,45 @@ void readIncommingNodeData() {
           if(debug) Serial.println("setting enableMonitoring to false");
           enableMonitoring = false;
           
-        }else if(incomingByte == 3) { // update silenceThreshold
-          if(debug) Serial.println("updating silenceThreshold");
-          
+        }else if(incomingByte == 3) { // update settings of channel
           while( !NodeSerial.available() ){ }
-          incomingByte = NodeSerial.read();
-          int pin  = incomingByte;
-          if(debug) Serial.print("on pin: ");
+          int pin = NodeSerial.read();
+
+          if(debug) Serial.print("updating settings of pin ");
           if(debug) Serial.println(pin);
           
-          while( !NodeSerial.available() ){ }
-          incomingByte = NodeSerial.read();
-          uint8_t firstByte = incomingByte;
-          
-          while( !NodeSerial.available() ){ }
-          incomingByte = NodeSerial.read();
-          uint8_t secondByte = incomingByte;
-          
-          int value = (firstByte << 8 ) | (secondByte & 0xff);
-          if(debug) Serial.print("silenceThreshold: ");
-          if(debug) Serial.println(value);
-          
-          silenceThreshold[pin] = value;
+          for (int i = 0; i < 4; ++i) {
+            uint8_t firstByte;
+            uint8_t secondByte;
+            
+            while( !NodeSerial.available() ){ }
+            firstByte = NodeSerial.read();
+            
+            while( !NodeSerial.available() ){ }
+            secondByte = NodeSerial.read();
+  
+            int value = (firstByte << 8 ) | (secondByte & 0xff);
+            
+              
+            switch (i) {
+              case 0:
+                if(debug) Serial.print("silenceThreshold: "); if(debug) Serial.println(value);
+                silenceThreshold[pin] = value;
+                break;
+              case 1:
+                if(debug) Serial.print("soundThreshold: "); if(debug) Serial.println(value);
+                soundThreshold[pin] = value;
+                break;
+              case 2:
+                if(debug) Serial.print("nrOfConsecutiveSilenceSamplesBeforeFlippingToSilence: "); if(debug) Serial.println(value);
+                nrOfConsecutiveSilenceSamplesBeforeFlippingToSilence[pin] = value;
+                break;
+              case 3:
+                if(debug) Serial.print("nrOfConsecutiveSoundSamplesBeforeFlippingToSound: "); if(debug) Serial.println(value);
+                nrOfConsecutiveSoundSamplesBeforeFlippingToSound[pin] = value;
+                break;
+            }
+          }
           
         }else if(incomingByte == 4) { // update soundThreshold
           if(debug) Serial.println("updating soundThreshold");
