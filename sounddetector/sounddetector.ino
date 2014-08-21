@@ -64,6 +64,11 @@ void setup()
   
   while (!NodeSerial); //hang till NodeSerial is up
   NodeSerial.begin(9600); //Serial to Node.js
+  
+  // send all settings (Node.js will reply with the correct settings if they are different):
+  for (int pin = 0; pin < pinCount; ++pin) {
+    reportSettings(pin);
+  }
 
   if(debug) while (!Serial); //hang till Serial is up
   if(debug) Serial.begin(9600);
