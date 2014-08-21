@@ -10,10 +10,20 @@ var utils = require('./utils');
 var net = require('net');
 var socketio = require('socket.io');
 var _ = require('underscore');
-var config = require('./config');
 
 var Arduino = require('./arduino');
 var arduino = new Arduino();
+
+
+var settingsdb = require('./settingsdb');
+var settings = {};
+
+settingsdb.load(function (err, _settings) {
+	settings = _settings;
+});
+
+
+
 
 
 // Webserver:
@@ -66,8 +76,36 @@ arduino.on('soundstateChanged', function (state) {
 	io.sockets.emit('soundstateChanged', state);
 });
 
-arduino.on('incommingSettings', function (channel) {
-	console.log('incommingSettings', channel);
+arduino.on('incommingSettings', function (channel_arduino) {
+	console.log('incommingSettings', channel_arduino);
+
+	// check if channel settings are different from local channel settings:
+	var channel_local = _.find(settings.channels, function (channel) {
+		return channel.id == channel_arduino.id;
+	});
+
+	// console.log('--------------------------');
+	// console.log(channel_local);
+	// console.log(channel_arduino);
+
+	var isDifferent = false;
+
+	if(channel_local.silenceThreshold != channel_arduino.silenceThreshold)
+		isDifferent = true;
+
+	if(channel_local.soundThreshold != channel_arduino.soundThreshold)
+		isDifferent = true;
+
+	if(channel_local.nrOfConsecutiveSilenceSamplesBeforeFlippingToSilence != channel_arduino.nrOfConsecutiveSilenceSamplesBeforeFlippingToSilence)
+		isDifferent = true;
+
+	if(channel_local.nrOfConsecutiveSoundSamplesBeforeFlippingToSound != channel_arduino.nrOfConsecutiveSoundSamplesBeforeFlippingToSound)
+		isDifferent = true;
+
+
+	if( isDifferent ){
+		arduino.sendSettings(channel_local);
+	}
 });
 
 
@@ -99,11 +137,11 @@ app.get('/', function (req, res) {
 
 // rest interface to backbone:
 app.get('/api/channels', function (req, res) {
-	return res.send(config.channels);
+	return res.send(settings.channels);
 });
 
 app.patch('/api/channels/:channelid', function (req, res) {
-	var channel = _.find(config.channels, function (channel) {
+	var channel = _.find(settings.channels, function (channel) {
 		return channel.id == req.params.channelid;
 	});
 
@@ -132,6 +170,8 @@ app.patch('/api/channels/:channelid', function (req, res) {
 	if(changesHappened){
 		arduino.sendSettings(channel);
 	}
+
+	settingsdb.save(settings);
 
 
 	return res.send(channel);
