@@ -5,6 +5,9 @@ var http = require('http')
 var path = require('path');
 var jade = require('jade');
 var fs = require('fs');
+
+var httpreq = require('httpreq');
+
 var utils = require('./utils');
 
 var net = require('net');
@@ -67,17 +70,61 @@ io.sockets.on('connection', function (socket) {
 // Arduino:
 
 arduino.on('soundlevelChanged', function (soundlevel) {
-	console.log('soundlevelChanged', soundlevel);
+	// console.log('soundlevelChanged', soundlevel);
+
+	// send to UI:
 	io.sockets.emit('soundlevelChanged', soundlevel);
 });
 
 arduino.on('soundstateChanged', function (state) {
-	console.log('soundstateChanged', state);
+	// state.channel;
+	// state.soundstate;
+
+	// console.log('soundstateChanged', state);
+
+
+	// check if we need to send a http event to somewhere:
+	var channel = _.find(settings.channels, function (channel) {
+		return channel.id == state.channel;
+	});
+
+
+	if(channel.onsoundevent_enabled) {
+
+		var json = null;
+		try{
+			json = JSON.parse(channel.onsoundevent_body);
+		}catch(e){}
+
+		if(json){
+			httpreq[channel.onsoundevent_type](channel.onsoundevent_endpoint, {json: json}, function (err, res) {
+				if(err) return console.log('error when sending http event for channel ' + state.channel, err);
+			});
+		}
+	}
+
+	if(channel.onsilenceevent_enabled) {
+
+		var json = null;
+		try{
+			json = JSON.parse(channel.onsilenceevent_body);
+		}catch(e){}
+
+		if(json){
+			httpreq[channel.onsilenceevent_type](channel.onsilenceevent_endpoint, {json: json}, function (err, res) {
+				if(err) return console.log('error when sending http event for channel ' + state.channel, err);
+			});
+		}
+	}
+
+
+
+	// send to UI:
 	io.sockets.emit('soundstateChanged', state);
 });
 
 arduino.on('incommingSettings', function (channel_arduino) {
-	console.log('incommingSettings', channel_arduino);
+	// console.log('incommingSettings', channel_arduino);
 
 	// check if channel settings are different from local channel settings:
 	var channel_local = _.find(settings.channels, function (channel) {
@@ -145,35 +192,51 @@ app.patch('/api/channels/:channelid', function (req, res) {
 		return channel.id == req.params.channelid;
 	});
 
-	var changesHappened = false;
+
+
+	// arduino settings:
+
+	var arduinosettings_changed = false;
 
 	if(req.body.silenceThreshold !== undefined) {
 		channel.silenceThreshold = req.body.silenceThreshold;
-		changesHappened = true;
+		arduinosettings_changed = true;
 	}
 
 	if(req.body.soundThreshold !== undefined) {
 		channel.soundThreshold = req.body.soundThreshold;
-		changesHappened = true;
+		arduinosettings_changed = true;
 	}
 
 	if(req.body.nrOfConsecutiveSilenceSamplesBeforeFlippingToSilence !== undefined) {
 		channel.nrOfConsecutiveSilenceSamplesBeforeFlippingToSilence = req.body.nrOfConsecutiveSilenceSamplesBeforeFlippingToSilence;
-		changesHappened = true;
+		arduinosettings_changed = true;
 	}
 
 	if(req.body.nrOfConsecutiveSoundSamplesBeforeFlippingToSound !== undefined) {
 		channel.nrOfConsecutiveSoundSamplesBeforeFlippingToSound = req.body.nrOfConsecutiveSoundSamplesBeforeFlippingToSound;
-		changesHappened = true;
+		arduinosettings_changed = true;
 	}
 
-	if(changesHappened){
+	if(arduinosettings_changed){
 		arduino.sendSettings(channel);
 	}
 
+
+
+
+	// httpeventsettings:
+
+	if(req.body.onsoundevent_enabled !== undefined) { // we're only checking 'onsoundevent_enabled', the other 7 values should be there too
+		// just 'paste' them into the channel object:
+		for(var key in req.body){
+			channel[key] = req.body[key];
+		}
+	}
+
+
+
 	settingsdb.save(settings);
-
-
 	return res.send(channel);
 });
 

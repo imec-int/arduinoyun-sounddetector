@@ -187,12 +187,17 @@ var App = function (options) {
 			'change .silenceThreshold': 'silenceThreshold_changehandler',
 			'change .soundThreshold': 'soundThreshold_changehandler',
 			'change .nrOfConsecutiveSilenceSamplesBeforeFlippingToSilence': 'nrOfConsecutiveSilenceSamplesBeforeFlippingToSilence_changehandler',
-			'change .nrOfConsecutiveSoundSamplesBeforeFlippingToSound': 'nrOfConsecutiveSoundSamplesBeforeFlippingToSound_changehandler'
+			'change .nrOfConsecutiveSoundSamplesBeforeFlippingToSound': 'nrOfConsecutiveSoundSamplesBeforeFlippingToSound_changehandler',
+
+			'change .httpevent input': 'httpevent_input_changed',
+			'keyup .httpevent input, .httpevent textarea': 'httpevent_input_changed',
+			'click .savehttpevents': 'savehttpevents_clicked'
 		},
 
 		render: function(){
 			var html = $(this.template).tmpl(this.model.toJSON());
 			this.$el.html(html);
+			this.updateHttpeventsUI();
 			return this;
 		},
 
@@ -341,6 +346,62 @@ var App = function (options) {
 
 		nrOfConsecutiveSoundSamplesBeforeFlippingToSound_changehandler: function (event) {
 			this.model.save('nrOfConsecutiveSoundSamplesBeforeFlippingToSound', this.$('.nrOfConsecutiveSoundSamplesBeforeFlippingToSound').val(), {patch: true});
+		},
+
+		httpevent_input_changed: function (event) {
+			this.$('.savehttpevents').removeAttr('disabled');
+			this.updateHttpeventsUI();
+		},
+
+		updateHttpeventsUI: function () {
+			var onsoundEl = this.$('.onsound_event');
+			var onsilenceEl = this.$('.onsilence_event');
+
+			if( onsoundEl.find('.enable').is(':checked') )
+				onsoundEl.find('.type>input,.endpoint,.httpbody').removeAttr('disabled');
+			else
+				onsoundEl.find('.type>input,.endpoint,.httpbody').attr('disabled', 'disabled');
+
+
+			if( onsilenceEl.find('.enable').is(':checked') )
+				onsilenceEl.find('.type>input,.endpoint,.httpbody').removeAttr('disabled');
+			else
+				onsilenceEl.find('.type>input,.endpoint,.httpbody').attr('disabled', 'disabled');
+		},
+
+		savehttpevents_clicked: function (event) {
+			var onsoundEl = this.$('.onsound_event');
+			var onsilenceEl = this.$('.onsilence_event');
+
+			var data = {
+				onsoundevent_enabled   : onsoundEl.find('.enable').is(':checked'),
+				onsoundevent_type      : onsoundEl.find('.type>input:checked').val(),
+				onsoundevent_endpoint  : onsoundEl.find('.endpoint').val(),
+				onsoundevent_body      : onsoundEl.find('.httpbody').val(),
+
+				onsilenceevent_enabled : onsilenceEl.find('.enable').is(':checked'),
+				onsilenceevent_type    : onsilenceEl.find('.type>input:checked').val(),
+				onsilenceevent_endpoint: onsilenceEl.find('.endpoint').val(),
+				onsilenceevent_body    : onsilenceEl.find('.httpbody').val()
+			};
+
+			var validjson = this.checkValidJson(data.onsoundevent_body);
+			if(data.onsoundevent_enabled && !validjson) return alert("'On Sound' body is not valid json.");
+
+			validjson = this.checkValidJson(data.onsilenceevent_body);
+			if(data.onsilenceevent_enabled && !validjson) return alert("'On Silence' body is not valid json.");
+
+			this.model.save(data, {patch: true});
+			this.$('.savehttpevents').attr('disabled', 'disabled');
+		},
+
+		checkValidJson: function (data) {
+			try{
+				JSON.parse(data);
+				return true;
+			}catch(e){
+				return false;
+			}
 		}
 	});
 

@@ -38,19 +38,28 @@ a
 	text-decoration none
 	color gray
 
+
 .button, button
-	-webkit-appearance none
 	border 1px #AAA solid
 	background #F0F0F0
 	color #666
 	cursor pointer
-	font-size 13px
+	font-size 14px
 	font-weight 400
 	height 32px
-	line-height 25px
-	min-width 32px
+	min-width 140px
 	text-align center
 	display inline-block
 	cursor pointer
-	padding 0px 4px
-	outline none
+
+.button:active, button:active
+	padding-left 2px
+
+.button:disabled, button:disabled
+	color #b6b6b6
+	padding-left 0px
+
+a.button
+	padding-top 6px
+
+
