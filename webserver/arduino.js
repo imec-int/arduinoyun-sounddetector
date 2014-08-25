@@ -18,7 +18,7 @@ var SerialPort = serialport.SerialPort;
 
 var serialportname = '/dev/ttyATH0';
 if( process.env.NODE_ENV != 'production' ){
-	var serialportname = '/dev/cu.usbmodemfd121'; // for debugging on local machine
+	var serialportname = '/dev/cu.usbmodemfa131'; // for debugging on local machine
 }
 
 
