@@ -89,24 +89,29 @@ function ownparser () {
 			var out;
 
 			if( data[3] == 1 ){
+
+				// console.log('should be soundstate');
 				// we expect 2 more bytes to follow (so that's 6 bytes in total):
 				if(data.length < 6) return; // wait for more bytes
 				out = data.slice(0, 6);
 				data = data.slice(6);
-			}
 
-			if( data[3] == 2 ){
+			} else if( data[3] == 2 ){
+
+				// console.log('should be soundlevel');
 				// we expect 3 more bytes to follow (so that's 7 bytes in total):
 				if(data.length < 7) return; // wait for more bytes
 				out = data.slice(0, 7);
 				data = data.slice(7);
-			}
 
-			if( data[3] == 3 ){
+			} else if( data[3] == 3 ){
+
+				// console.log('should be incomming settings');
 				// we expect 9 more bytes to follow (so that's 13 bytes in total):
 				if(data.length < 13) return; // wait for more bytes
 				out = data.slice(0, 13);
 				data = data.slice(13);
+
 			}
 
 			// emit those 6,7 or 13 bytes:
