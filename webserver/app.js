@@ -82,45 +82,48 @@ arduino.on('soundstateChanged', function (state) {
 
 	// console.log('soundstateChanged', state);
 
+	io.sockets.emit('soundstateChanged', state);
+
 
 	// check if we need to send a http event to somewhere:
 	var channel = _.find(settings.channels, function (channel) {
 		return channel.id == state.channel;
 	});
 
+	try{
+		if(channel.onsoundevent_enabled) {
 
-	if(channel.onsoundevent_enabled) {
+			var json = null;
+			try{
+				json = JSON.parse(channel.onsoundevent_body);
+			}catch(e){}
 
-		var json = null;
-		try{
-			json = JSON.parse(channel.onsoundevent_body);
-		}catch(e){}
-
-		if(json){
-			httpreq[channel.onsoundevent_type](channel.onsoundevent_endpoint, {json: json}, function (err, res) {
-				if(err) return console.log('error when sending http event for channel ' + state.channel, err);
-			});
+			if(json){
+				httpreq[channel.onsoundevent_type](channel.onsoundevent_endpoint, {json: json}, function (err, res) {
+					if(err) return console.log('error when sending http event for channel ' + state.channel, err);
+				});
+			}
 		}
-	}
 
-	if(channel.onsilenceevent_enabled) {
+		if(channel.onsilenceevent_enabled) {
 
-		var json = null;
-		try{
-			json = JSON.parse(channel.onsilenceevent_body);
-		}catch(e){}
+			var json = null;
+			try{
+				json = JSON.parse(channel.onsilenceevent_body);
+			}catch(e){}
 
-		if(json){
-			httpreq[channel.onsilenceevent_type](channel.onsilenceevent_endpoint, {json: json}, function (err, res) {
-				if(err) return console.log('error when sending http event for channel ' + state.channel, err);
-			});
+			if(json){
+				httpreq[channel.onsilenceevent_type](channel.onsilenceevent_endpoint, {json: json}, function (err, res) {
+					if(err) return console.log('error when sending http event for channel ' + state.channel, err);
+				});
+			}
 		}
-	}
+	}catch(e){}
 
 
 
 	// send to UI:
-	io.sockets.emit('soundstateChanged', state);
+
 });
 
 arduino.on('incommingSettings', function (channel_arduino) {
