@@ -30,3 +30,7 @@ node_modules
 
 # Mac OS x
 .DS_Store
+
+# 3D
+*.stl
+*.gcode
