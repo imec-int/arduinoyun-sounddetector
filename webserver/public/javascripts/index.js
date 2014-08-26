@@ -108,7 +108,16 @@ var App = function (options) {
 	Models.Channel = Backbone.Model.extend({
 		defaults:{
 			active: false,
-			soundstate: false
+			soundstate: false,
+
+			onsoundevent_enabled: false,
+			onsoundevent_type: 'put',
+			onsoundevent_endpoint: null,
+			onsoundevent_body: null,
+			onsilenceevent_enabled: false,
+			onsilenceevent_type: 'put',
+			onsilenceevent_endpoint: null,
+			onsilenceevent_body: null
 		}
 	});
 
