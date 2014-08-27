@@ -17,8 +17,10 @@ uint8_t incomingByte = 0;
 const int sampleWindow = 50; // Sample window width in mS (50 mS = 20Hz)
 unsigned int sample;
 
+const int statusLedPin = 13; // will light up when the channel settings are received 
+
 const int ledPins[] = {2, 3, 4, 5, 6, 7};
-const int soundPins[] = {A0, A1, A2, A3, A4, A5};
+const int soundPins[] = {A5, A4, A3, A2, A1, A0}; // soldered them the wrong way, so they're reversed here
 
 const int pinCount = 6;
 int soundValues[] = {0, 0, 0, 0, 0, 0};
@@ -54,6 +56,10 @@ int lastReportedPin = pinCount - 1;
 /* This function is called once at start up ----------------------------------*/
 void setup()
 {
+  pinMode(statusLedPin, OUTPUT);
+  digitalWrite(statusLedPin, 0);
+  
+  
   for (int pin = 0; pin < pinCount; ++pin) {
     // register every pin as input:
     pinMode(soundPins[pin], INPUT);
@@ -81,7 +87,7 @@ void loop() {
     // collecting data:
     
     for (int pin = 0; pin < pinCount; ++pin) {
-      sample = analogRead(pin);
+      sample = analogRead(soundPins[pin]);
       if (sample < 1024) { // toss out spurious readings
          if (sample > signalMax[pin]) {
             signalMax[pin] = sample;  // save just the max levels
@@ -259,6 +265,8 @@ void readIncommingNodeData() {
 
           if(debug) Serial.print("incomming settings of pin ");
           if(debug) Serial.println(pin);
+          
+          digitalWrite(statusLedPin, 1); // turn on after first settings are received
           
           for (int i = 0; i < 4; ++i) {
             uint8_t firstByte;
