@@ -23,6 +23,9 @@ var settings = {};
 
 settingsdb.load(function (err, _settings) {
 	settings = _settings;
+
+	// wait till settings are loaded before connecting to Arduino:
+	arduino.connect();
 });
 
 
@@ -80,7 +83,7 @@ arduino.on('soundstateChanged', function (state) {
 	// state.channel;
 	// state.soundstate;
 
-	// console.log('soundstateChanged', state);
+	console.log('soundstateChanged', state);
 
 	io.sockets.emit('soundstateChanged', state);
 
@@ -91,12 +94,14 @@ arduino.on('soundstateChanged', function (state) {
 	});
 
 	try{
-		if(channel.onsoundevent_enabled) {
+		if(channel.onsoundevent_enabled && state.soundstate == true) {
 
 			var json = null;
 			try{
 				json = JSON.parse(channel.onsoundevent_body);
 			}catch(e){}
+
+			// console.log("sending to endpoint", channel.onsoundevent_endpoint);
 
 			if(json){
 				httpreq[channel.onsoundevent_type](channel.onsoundevent_endpoint, {json: json}, function (err, res) {
@@ -105,7 +110,7 @@ arduino.on('soundstateChanged', function (state) {
 			}
 		}
 
-		if(channel.onsilenceevent_enabled) {
+		if(channel.onsilenceevent_enabled && state.soundstate == false) {
 
 			var json = null;
 			try{
@@ -153,7 +158,11 @@ arduino.on('incommingSettings', function (channel_arduino) {
 		isDifferent = true;
 
 
+
+
+
 	if( isDifferent ){
+		// console.log('isDifferent, sending settings');
 		arduino.sendSettings(channel_local);
 	}
 });

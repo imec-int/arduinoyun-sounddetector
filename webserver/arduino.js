@@ -128,9 +128,15 @@ function ownparser () {
 
 Arduino = function(options){
 	events.EventEmitter.call(this);
+	return this;
+}
 
+util.inherits(Arduino, events.EventEmitter);
+
+// 'public' functions:
+
+Arduino.prototype.connect = function (channelid) {
 	var self = this;
-
 
 	this.sp = new SerialPort(serialportname, {
 		parser: ownparser(),
@@ -146,7 +152,9 @@ Arduino = function(options){
 	});
 
 	this.sp.on('data', function (data) {
-		// console.log(data);
+		// console.log('data', data);
+		if(data === undefined) return;
+		if(!data[3]) return;
 
 		if(data[3] == 1){
 			return parseSoundState(data);
@@ -191,13 +199,8 @@ Arduino = function(options){
 		}
 		self.emit("incommingSettings", channel);
 	}
+};
 
-	return this;
-}
-
-util.inherits(Arduino, events.EventEmitter);
-
-// 'public' functions:
 Arduino.prototype.enableSoundgraphMonitoring = function (channelid) {
 	var buf = new Buffer(5);
 	buf[0] = 255;
