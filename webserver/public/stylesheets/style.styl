@@ -57,12 +57,37 @@ body
 		color white
 		padding-left 10px
 
+	.channelnamebox
+		position absolute
+		left 0px
+		top 40px
+		right 500px
+		height 32px
+
+		>input.channelname // has to be in a container, 'cause right 500px doesn't work on an input element
+			width 100%
+			height 100%
+			padding-left 10px
+			padding-right 10px
+			font-size 14px
+
+	button.updatechannelname
+		position absolute
+		top 40px
+		right 320px
+		width 170px
+
+	.activatesoundgraph, .deactivatesoundgraph
+		position absolute
+		top 110px
+		left 0px
+
 	.deactivatesoundgraph
 		display none
 
 	.soundgraph
 		position absolute
-		top 100px
+		top 150px
 		left 0px
 		right 320px
 		height 300px
@@ -71,7 +96,7 @@ body
 
 	.settings
 		position absolute
-		top 100px
+		top 150px
 		right 0px
 		width 300px
 		label
@@ -84,7 +109,7 @@ body
 
 	.httpevents
 		position absolute
-		top 420px
+		top 470px
 		left 0px
 		right 320px
 		height 550px

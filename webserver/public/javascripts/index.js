@@ -144,6 +144,7 @@ var App = function (options) {
 		className: 'channelmenuitem',
 
 		initialize: function(){
+			this.model.on('change:name', this.renderName, this);
 			this.model.on('change:soundstate', this.renderSoundstate, this);
 			this.model.on('change:active', this.renderActiveState, this);
 		},
@@ -157,6 +158,10 @@ var App = function (options) {
 			this.$el.html(html);
 			this.renderActiveState();
 			return this;
+		},
+
+		renderName: function (model, name) {
+			this.$('.name').html( name );
 		},
 
 		renderSoundstate: function (model, soundstate) {
@@ -186,11 +191,14 @@ var App = function (options) {
 		initialize: function(){
 			this.graph = null;
 
+			this.model.on('change:name', this.renderName, this);
 			this.model.on('change:soundstate', this.renderSoundstate, this);
 			this.model.on('change:level', this.level_changed, this);
 		},
 
 		events : {
+			'click button.updatechannelname' : 'updatechannelname_clicked',
+
 			'click .activatesoundgraph': 'activatesoundgraph_clickhandler',
 			'click .deactivatesoundgraph': 'deactivatesoundgraph_clickhandler',
 			'change .silenceThreshold': 'silenceThreshold_changehandler',
@@ -210,6 +218,10 @@ var App = function (options) {
 			return this;
 		},
 
+		renderName: function (model, name) {
+			this.$('.name').html( name );
+		},
+
 		renderSoundstate: function (model, soundstate) {
 			if( soundstate == true ) {
 				this.$el.addClass('soundon');
@@ -217,6 +229,7 @@ var App = function (options) {
 				this.$el.removeClass('soundon');
 			}
 		},
+
 
 		level_changed: function (model, level) {
 			if(this.graph == null) return; // graph not initialized
@@ -331,6 +344,10 @@ var App = function (options) {
 		},
 
 		// UI Handlers:
+		updatechannelname_clicked: function (event) {
+			this.model.save('name', this.$('input.channelname').val(), {patch: true});
+		},
+
 		activatesoundgraph_clickhandler: function (event) {
 			this.$el.addClass('soundgraphactive');
 			this.initGraph();

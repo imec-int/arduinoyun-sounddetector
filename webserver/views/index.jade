@@ -30,6 +30,10 @@ html
 		script#channelview-tmpl(type="text/x-jquery-tmpl")
 			.name ${name}
 			br
+			.channelnamebox
+				input.channelname(type="text", value="${name}", placeholder="Channel Name")
+			button.updatechannelname Update Channel Name
+
 			button.activatesoundgraph Activate Sound Graph
 			button.deactivatesoundgraph Deactivate Sound Graph
 			br
@@ -37,72 +41,76 @@ html
 			.soundgraph
 				canvas
 			.settings
-				.silencesettings
-					label Silence threshold:
-					br
-					input.silenceThreshold(type='number', value='${silenceThreshold}')
-				br
 				.soundsettings
 					label Sound threshold:
 					br
 					input.soundThreshold(type='number', value='${soundThreshold}')
 				br
-				.silencesettings
-					label Number of consecutive silence samples before flipping to silence (1 sample = 50ms):
-					br
-					input.nrOfConsecutiveSilenceSamplesBeforeFlippingToSilence(type='number', value='${nrOfConsecutiveSilenceSamplesBeforeFlippingToSilence}')
-				br
+
 				.soundsettings
 					label Number of consecutive sound samples before flipping to sound (1 sample = 50ms):
 					br
 					input.nrOfConsecutiveSoundSamplesBeforeFlippingToSound(type='number', value='${nrOfConsecutiveSoundSamplesBeforeFlippingToSound}')
 				br
+
+				.silencesettings
+					label Silence threshold:
+					br
+					input.silenceThreshold(type='number', value='${silenceThreshold}')
+				br
+
+				.silencesettings
+					label Number of consecutive silence samples before flipping to silence (1 sample = 50ms):
+					br
+					input.nrOfConsecutiveSilenceSamplesBeforeFlippingToSilence(type='number', value='${nrOfConsecutiveSilenceSamplesBeforeFlippingToSilence}')
+
+				br
 				br
 			.httpevents
 				.title HTTP events:
 				.httpevent.onsound_event
-					{{if onsoundevent_enabled}}
+					| {{if onsoundevent_enabled}}
 					input.enable(type="checkbox", checked="checked")
-					{{else}}
+					| {{else}}
 					input.enable(type="checkbox")
-					{{/if}}
+					| {{/if}}
 					| &nbsp;On Sound:
 					br
 					.type
-						{{if onsoundevent_type == "post"}}
+						| {{if onsoundevent_type == "post"}}
 						input(type="radio", name="onsound_type", value="post", checked="checked")
 						| &nbsp;post&nbsp; &nbsp;
 						input(type="radio", name="onsound_type", value="put")
 						| &nbsp;put
-						{{else}}
+						| {{else}}
 						input(type="radio", name="onsound_type", value="post")
 						| &nbsp;post&nbsp; &nbsp;
 						input(type="radio", name="onsound_type", value="put", checked="checked")
 						| &nbsp;put
-						{{/if}}
+						| {{/if}}
 					input.endpoint(type="text", placeholder="HTTP endpoint", value="${onsoundevent_endpoint}")
 					br
 					textarea.httpbody(placeholder="This JSON will be sent to the endpoint when sound is detected.") ${onsoundevent_body}
 				.httpevent.onsilence_event
-					{{if onsilenceevent_enabled}}
+					| {{if onsilenceevent_enabled}}
 					input.enable(type="checkbox", checked="checked")
-					{{else}}
+					| {{else}}
 					input.enable(type="checkbox")
-					{{/if}}
+					| {{/if}}
 					| &nbsp;On Silence:
 					br
 					.type
-						{{if onsilenceevent_type == "post"}}
+						| {{if onsilenceevent_type == "post"}}
 						input(type="radio", name="onsilence_type", value="post", checked="checked")
 						| &nbsp;post&nbsp; &nbsp;
 						input(type="radio", name="onsilence_type", value="put")
 						| &nbsp;put
-						{{else}}
+						| {{else}}
 						input(type="radio", name="onsilence_type", value="post")
 						| &nbsp;post&nbsp; &nbsp;
 						input(type="radio", name="onsilence_type", value="put", checked="checked")
 						| &nbsp;put
-						{{/if}}
+						| {{/if}}
 					input.endpoint(type="text", placeholder="HTTP endpoint", value="${onsilenceevent_endpoint}")
 					br
 					textarea.httpbody(placeholder="This JSON will be sent to the endpoint when silence is detected.") ${onsilenceevent_body}

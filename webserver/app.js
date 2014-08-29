@@ -206,7 +206,7 @@ app.patch('/api/channels/:channelid', function (req, res) {
 
 
 
-	// arduino settings:
+	// ARDUINO SETTINGS
 
 	var arduinosettings_changed = false;
 
@@ -236,8 +236,15 @@ app.patch('/api/channels/:channelid', function (req, res) {
 
 
 
+	// CHANNEL NAME:
 
-	// httpeventsettings:
+	if(req.body.name !== undefined) {
+		channel.name = req.body.name;
+	}
+
+
+
+	// HTTP EVENT SETTINGS:
 
 	if(req.body.onsoundevent_enabled !== undefined) { // we're only checking 'onsoundevent_enabled', the other 7 values should be there too
 		// just 'paste' them into the channel object:
