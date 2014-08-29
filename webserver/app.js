@@ -29,6 +29,21 @@ settingsdb.load(function (err, _settings) {
 });
 
 
+function log() {
+	console.log.apply(this, arguments);
+
+	var now = new Date();
+	var filepath = path.join(__dirname, "log.txt");
+
+	var str = now.toString() + ': ';
+	for (var i = 0; i < arguments.length; i++) {
+		str += arguments[i] + '\n';
+	}
+
+	fs.appendFile(filepath, str, function (err) {});
+}
+
+
 
 
 
@@ -54,7 +69,7 @@ app.configure('development', function(){
 });
 
 var webserver = http.createServer(app).listen(app.get('port'), function(){
-	console.log("Express server listening on port " + app.get('port') + " - v 0.1.0");
+	log("Express server listening on port " + app.get('port') + " - v 0.1.0");
 });
 
 
@@ -64,7 +79,7 @@ io.set('log level', 0);
 
 io.sockets.on('connection', function (socket) {
 	socket.on('disconnect', function() {
-		console.log('> user disconnected, disabling soundgraph monitoring');
+		log('> user disconnected, disabling soundgraph monitoring');
 		arduino.disableSoundgraphMonitoring();
 	});
 });
@@ -73,7 +88,7 @@ io.sockets.on('connection', function (socket) {
 // Arduino:
 
 arduino.on('soundlevelChanged', function (soundlevel) {
-	// console.log('soundlevelChanged', soundlevel);
+	// log('soundlevelChanged', soundlevel);
 
 	// send to UI:
 	io.sockets.emit('soundlevelChanged', soundlevel);
@@ -83,8 +98,10 @@ arduino.on('soundstateChanged', function (state) {
 	// state.channel;
 	// state.soundstate;
 
-	console.log('soundstateChanged', state);
+	log('soundstateChanged', state);
 
+
+	// send to UI:
 	io.sockets.emit('soundstateChanged', state);
 
 
@@ -93,24 +110,35 @@ arduino.on('soundstateChanged', function (state) {
 		return channel.id == state.channel;
 	});
 
-	try{
-		if(channel.onsoundevent_enabled && state.soundstate == true) {
+
+	if(channel.onsoundevent_enabled && state.soundstate == true) {
+
+		try{
 
 			var json = null;
 			try{
 				json = JSON.parse(channel.onsoundevent_body);
 			}catch(e){}
 
-			// console.log("sending to endpoint", channel.onsoundevent_endpoint);
+			// log("sending to endpoint", channel.onsoundevent_endpoint);
 
 			if(json){
 				httpreq[channel.onsoundevent_type](channel.onsoundevent_endpoint, {json: json}, function (err, res) {
-					if(err) return console.log('error when sending http event for channel ' + state.channel, err);
+					if(err) log('http error when sending http onsilenceevent for channel ' + state.channel, err);
 				});
 			}
+
+		}catch(e){
+			log('try/catch error when sending http onsilenceevent for channel ' + state.channel, e);
 		}
 
-		if(channel.onsilenceevent_enabled && state.soundstate == false) {
+	}
+
+
+
+	if(channel.onsilenceevent_enabled && state.soundstate == false) {
+
+		try{
 
 			var json = null;
 			try{
@@ -119,29 +147,33 @@ arduino.on('soundstateChanged', function (state) {
 
 			if(json){
 				httpreq[channel.onsilenceevent_type](channel.onsilenceevent_endpoint, {json: json}, function (err, res) {
-					if(err) return console.log('error when sending http event for channel ' + state.channel, err);
+					if(err) log('http error when sending http onsoundevent for channel ' + state.channel, err);
 				});
 			}
+
+		}catch(e){
+			log('try/catch error when sending http onsoundevent for channel ' + state.channel, e);
 		}
-	}catch(e){}
+
+	}
 
 
 
-	// send to UI:
+
 
 });
 
 arduino.on('incommingSettings', function (channel_arduino) {
-	// console.log('incommingSettings', channel_arduino);
+	// log('incommingSettings', channel_arduino);
 
 	// check if channel settings are different from local channel settings:
 	var channel_local = _.find(settings.channels, function (channel) {
 		return channel.id == channel_arduino.id;
 	});
 
-	// console.log('--------------------------');
-	// console.log(channel_local);
-	// console.log(channel_arduino);
+	// log('--------------------------');
+	// log(channel_local);
+	// log(channel_arduino);
 
 	var isDifferent = false;
 
@@ -162,7 +194,7 @@ arduino.on('incommingSettings', function (channel_arduino) {
 
 
 	if( isDifferent ){
-		// console.log('isDifferent, sending settings');
+		// log('isDifferent, sending settings');
 		arduino.sendSettings(channel_local);
 	}
 });
@@ -174,14 +206,14 @@ arduino.on('incommingSettings', function (channel_arduino) {
 // Compile index.html if we're not on production 'machine':
 if( process.env.NODE_ENV != 'production' ){
 	fs.readFile(__dirname + '/views/index.jade', 'utf8', function (err, data) {
-		if (err) return console.log(err);
+		if (err) return log(err);
 
 		var template = jade.compile(data);
 		var html = template({});
 
 		fs.writeFile(__dirname + '/public/index.html', html, function (err) {
-			if(err) return console.log(err);
-			console.log('New index.html rendered');
+			if(err) return log(err);
+			log('New index.html rendered');
 		});
 	});
 }
