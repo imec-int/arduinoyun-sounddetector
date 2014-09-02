@@ -34,3 +34,6 @@ node_modules
 # 3D
 *.stl
 *.gcode
+
+
+log.txt

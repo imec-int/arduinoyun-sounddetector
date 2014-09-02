@@ -42,6 +42,10 @@ module gat (){
 
 //left side:
 translate([-depth/2, -width/2, 0]) cube([depth, thickness, height]);
+
+
+
+
 //right side:
 translate([-depth/2, width/2-thickness, 0]) {
 	difference() {
@@ -53,6 +57,17 @@ translate([-depth/2, width/2-thickness, 0]) {
 
 	}
 }
+
+// extra support for 'right side':
+
+
+translate([0, -width/2, 0]) difference(){
+
+	cube([thickness, width, height-thickness]);
+
+	rotate(a=[30,0,0]) translate([-5, 0, -10]) cube([10, width, height*2]);
+}
+
 //back:
 translate([-depth/2, -width/2, 0]) cube([thickness, width, height]);
 
@@ -102,8 +117,12 @@ translate([depth/2-thickness-13.83, ethernet_ypos+45.39, bottom_thickness]) supp
 
 // achterste:
 translate([depth/2-thickness-65.88, ethernet_ypos+12.51, bottom_thickness]) supporthole();
-translate([depth/2-thickness-65.88, ethernet_ypos+12.51+28.07, bottom_thickness]) supporthole();
 
+translate([depth/2-thickness-65.88, ethernet_ypos+12.51+28.07, bottom_thickness]) difference(){
+	supporthole();
+
+	translate([-5,-11.5,-1]) cube([10,10,supportholes_height+2]);
+}
 
 
 
@@ -114,11 +133,11 @@ module lidhole(height){
 	}
 }
 
-translate([(depth/2-5/2-thickness),+(width/2-5/2-thickness),0]) lidhole(height);
-translate([(depth/2-5/2-thickness),-(width/2-5/2-thickness),0]) lidhole(height);
+translate([(depth/2-5/2-thickness),+(width/2-5/2-thickness),0]) lidhole(height-thickness);
+translate([(depth/2-5/2-thickness),-(width/2-5/2-thickness),0]) lidhole(height-thickness);
 
-translate([-(depth/2-5/2-thickness),+(width/2-5/2-thickness),0]) lidhole(height);
-translate([-(depth/2-5/2-thickness),-(width/2-5/2-thickness),0]) lidhole(height);
+translate([-(depth/2-5/2-thickness),+(width/2-5/2-thickness),0]) lidhole(height-thickness);
+translate([-(depth/2-5/2-thickness),-(width/2-5/2-thickness),0]) lidhole(height-thickness);
 
 
 
