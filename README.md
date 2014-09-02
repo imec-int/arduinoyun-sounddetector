@@ -41,7 +41,11 @@ Don't install socket.io using [npm](https://www.npmjs.org/package/socket.io) but
 
 ### Install other Node.js modules
 
-Try to install other Node.js modules. Install them on your computer and then copy them to the Yun. Installing modules on can take up some time.
+Try to install other Node.js modules on your computer and then copy them to the Yun. Installing modules on can take up some time.
+
+### Install the node code
+
+Copy the code to ```/www/sd/node-sounddetector/app```
 
 ### Disable the console on /dev/ttyATH0
 
@@ -54,6 +58,25 @@ Open ```/etc/inittab``` and comment out the following line:
 Change it to:
 
     # ttyATH0::askfirst:/bin/ash --login
+
+
+
+### Run the code
+
+Run the code at least once on your computer so that a fresh ```public/index.html``` is created. Make sure you copy it to the Yun.
+
+Go to ```/www/sd/node-sounddetector/app``` and run:
+
+
+    NODE_ENV=production node app
+
+
+### Startup your node process everytime the Yun starts
+
+Go the OpenWRT control panel of your Yun. Go to ```System```, ```Local Startup``` and add the following line to ```/etc/rc.local``` just before ```exit 0```:
+
+    NODE_ENV=production /usr/bin/node /www/sd/node-sounddetector/app/app.js  1>/www/sd/node-sounddetector/app.log 2>&1 &
+
 
 
 ## Error fixes
