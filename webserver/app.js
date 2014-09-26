@@ -37,7 +37,13 @@ function log() {
 
 	var str = now.toString() + ': ';
 	for (var i = 0; i < arguments.length; i++) {
-		str += arguments[i] + '\n';
+
+		if (typeof arguments == 'string' || arguments instanceof String) {
+			str += arguments[i] + '\n';
+		}else{
+			str += JSON.stringify(arguments[i]) + '\n';
+		}
+
 	}
 
 	fs.appendFile(filepath, str, function (err) {});
